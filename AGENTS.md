@@ -18,3 +18,10 @@
 - Keep the fixed desktop `ComPet.lnk` and `morningmeal_Compet_V3/dist/Compet-V3/Compet-V3.exe` path. Do not create new version-suffixed executables/directories or ZIP archives for ordinary local rebuilds.
 - Let the script stage, smoke-test, and publish the build. Never force-stop a user's running app to replace it; ask them to exit through the tray menu if the fixed app is running.
 - Run the Qt editing regression with `.venv/Scripts/python.exe -m unittest discover -s tests -p 'test_*.py' -v` when changing timer settings.
+
+## Tracking and interaction rules
+
+- Window groups have expandable tracking rows; never truncate saved groups to three entries.
+- All matching ordinary timers accrue independently, with their own pause/idle checks. Only the first matching timer in configuration/list order is displayed.
+- A timer with `is_fallback: true` covers only foreground tasks unmatched by every ordinary timer. Paused or idle ordinary matches must not be redirected into it. Missing/failed foreground reads and the app's own UI do not accrue fallback time.
+- A fallback timer's existence enables global pet keyboard/mouse response, even if paused. Its name is editable and does not determine its role. This must not bypass input-monitoring permissions or alter timer accounting.

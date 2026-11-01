@@ -30,8 +30,8 @@ class TimerPolicyTests(unittest.TestCase):
         self.assertEqual(self.session.display_id,'social')
         self.assertEqual(self.session.reason,'idle')
         self.assertEqual(self.data['timers'][0]['elapsed_seconds'],100)
-    def test_exact_app_beats_chat_topic_title(self):
-        self.assertEqual(select_timer(self.data['timers'],self.data['groups'],['QQ'],'ChatGPT discussion','work'),'social')
+    def test_first_listed_matching_timer_is_displayed(self):
+        self.assertEqual(select_timer(self.data['timers'],self.data['groups'],['QQ'],'ChatGPT discussion','social'),'work')
     def test_wechat_alias_matches_chinese_keyword(self):
         self.assertEqual(select_timer(self.data['timers'],self.data['groups'],['WeChat','微信'],'','work'),'social')
     def test_title_matching_still_supported(self):
@@ -64,11 +64,12 @@ class TimerPolicyTests(unittest.TestCase):
         self.step('QQ',0,allowed=False)
         self.assertEqual(self.session.display_id,'social')
         self.assertEqual(self.session.reason,'permission')
-    def test_overlapping_groups_choose_only_one(self):
+    def test_overlapping_groups_count_all_and_display_first(self):
         self.data['groups']['social']=['ChatGPT']
         self.step('ChatGPT',0);result=self.step('ChatGPT',1)
-        self.assertEqual(result,{'work':101})
-        self.assertEqual(self.data['timers'][1]['elapsed_seconds'],20)
+        self.assertEqual(result,{'work':101,'social':21})
+        self.assertEqual(self.session.display_id,'work')
+        self.assertEqual(self.data['timers'][1]['elapsed_seconds'],21)
     def test_single_pet_migrates_to_both_timers(self):
         before=copy.deepcopy(self.data['timers'])
         self.assertTrue(migrate_preferences(self.data))

@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from core.config_manager import config_mgr
 from core.i18n import I18n
 from core.activity_engine import activity_engine
+from core.timer_policy import has_fallback_timer
 from ui.components import (
     ConfirmDialog, AlertDialog, capture_bridge, 
     start_window_click_capture, cancel_window_click_capture, format_time
@@ -48,7 +49,7 @@ class TimerCardWidget(QFrame):
 
         # 그룹 배정
         group_layout = QHBoxLayout()
-        self.lbl_g = QLabel(I18n.tr("group_label"))
+        self.lbl_g = QLabel(I18n.tr("fallback_label" if self.timer_data.get("is_fallback") else "group_label"))
         self.lbl_g.setStyleSheet("color: #64748B; font-size: 11px;")
         self.group_combo = QComboBox()
         self.group_combo.setFixedHeight(28)
@@ -57,6 +58,10 @@ class TimerCardWidget(QFrame):
         group_layout.addWidget(self.lbl_g)
         group_layout.addWidget(self.group_combo, 1)
         layout.addLayout(group_layout)
+        self.fallback_hint = QLabel(I18n.tr("fallback_hint"))
+        self.fallback_hint.setWordWrap(True)
+        self.fallback_hint.setVisible(bool(self.timer_data.get("is_fallback", False)))
+        layout.addWidget(self.fallback_hint)
 
         # 유휴 시간 설정
         idle_layout = QHBoxLayout()
@@ -102,6 +107,11 @@ class TimerCardWidget(QFrame):
     def refresh_groups(self):
         self.group_combo.blockSignals(True)
         self.group_combo.clear()
+        if self.timer_data.get("is_fallback", False):
+            self.group_combo.setEnabled(False)
+            self.group_combo.addItem(I18n.tr("fallback_scope"))
+            self.group_combo.blockSignals(False)
+            return
         groups = list(config_mgr.config.get("groups", {}).keys())
         if groups:
             self.group_combo.setEnabled(True)
@@ -119,7 +129,10 @@ class TimerCardWidget(QFrame):
         self.group_combo.blockSignals(False)
 
     def retranslate_ui(self):
-        self.lbl_g.setText(I18n.tr("group_label"))
+        self.lbl_g.setText(I18n.tr("fallback_label" if self.timer_data.get("is_fallback") else "group_label"))
+        self.fallback_hint.setText(I18n.tr("fallback_hint"))
+        if self.timer_data.get("is_fallback"):
+            self.refresh_groups()
         self.lbl_i.setText(I18n.tr("idle_label"))
         self.idle_spin.setSuffix(f" {I18n.tr('unit_seconds')}")
         self.btn_reset.setText(I18n.tr("reset"))
@@ -179,7 +192,7 @@ class GroupCardWidget(QFrame):
     def __init__(self, group_name, windows, remove_group_callback, parent=None):
         super().__init__(parent)
         self.group_name = group_name
-        self.windows = (windows + ["", "", ""])[:3]
+        self.windows = list(windows) + [""] * max(0, 3 - len(windows))
         self.remove_group_callback = remove_group_callback
         self.current_capturing_btn = None
         self.update_card_style()
@@ -206,41 +219,56 @@ class GroupCardWidget(QFrame):
         self.slot_pick_btns = []
         self.slot_clear_btns = []
 
-        for i in range(3):
-            slot_h = QHBoxLayout()
-            slot_label = QLabel(f"{I18n.tr('slot')} {i+1}:")
-            slot_label.setFixedWidth(46)
-            slot_label.setStyleSheet("color: #64748B; font-size: 11px;")
-            self.slot_labels.append(slot_label)
-
-            le = QLineEdit(self.windows[i])
-            le.setFixedHeight(28)
-            le.setPlaceholderText(I18n.tr("slot_placeholder"))
-            le.textChanged.connect(lambda txt, idx=i: self.on_text_changed(idx, txt))
-            self.slot_edits.append(le)
-
-            btn_p = QPushButton(I18n.tr("pick_window"))
-            btn_p.setFixedHeight(28)
-            btn_p.setFixedWidth(106)
-            btn_p.clicked.connect(lambda _, b=btn_p, edit=le, idx=i: self.start_capture(b, edit, idx))
-            self.slot_pick_btns.append(btn_p)
-
-            btn_c = QPushButton(I18n.tr("clear"))
-            btn_c.setFixedHeight(28)
-            btn_c.setFixedWidth(54)
-            btn_c.clicked.connect(lambda _, edit=le, idx=i: self.clear_slot(edit, idx))
-            self.slot_clear_btns.append(btn_c)
-
-            slot_h.addWidget(slot_label)
-            slot_h.addWidget(le, 1)
-            slot_h.addWidget(btn_p)
-            slot_h.addWidget(btn_c)
-            layout.addLayout(slot_h)
+        self.slots_layout = QVBoxLayout()
+        layout.addLayout(self.slots_layout)
+        for value in self.windows:
+            self.append_slot(value)
+        self.add_window_btn = QPushButton(I18n.tr("add_tracked_window"))
+        self.add_window_btn.clicked.connect(self.add_window)
+        layout.addWidget(self.add_window_btn)
 
         capture_bridge.window_captured.connect(self.on_window_captured)
 
+    def append_slot(self, value=""):
+        i = len(self.slot_edits)
+        slot_h = QHBoxLayout()
+        slot_label = QLabel(f"{I18n.tr('slot')} {i+1}:")
+        slot_label.setFixedWidth(46)
+        slot_label.setStyleSheet("color: #64748B; font-size: 11px;")
+        self.slot_labels.append(slot_label)
+
+        le = QLineEdit(value)
+        le.setFixedHeight(28)
+        le.setPlaceholderText(I18n.tr("slot_placeholder"))
+        le.textChanged.connect(lambda txt, idx=i: self.on_text_changed(idx, txt))
+        self.slot_edits.append(le)
+
+        btn_p = QPushButton(I18n.tr("pick_window"))
+        btn_p.setFixedHeight(28)
+        btn_p.setFixedWidth(106)
+        btn_p.clicked.connect(lambda _, b=btn_p, edit=le, idx=i: self.start_capture(b, edit, idx))
+        self.slot_pick_btns.append(btn_p)
+
+        btn_c = QPushButton(I18n.tr("clear"))
+        btn_c.setFixedHeight(28)
+        btn_c.setFixedWidth(54)
+        btn_c.clicked.connect(lambda _, edit=le, idx=i: self.clear_slot(edit, idx))
+        self.slot_clear_btns.append(btn_c)
+
+        slot_h.addWidget(slot_label)
+        slot_h.addWidget(le, 1)
+        slot_h.addWidget(btn_p)
+        slot_h.addWidget(btn_c)
+        self.slots_layout.addLayout(slot_h)
+
+    def add_window(self):
+        self.windows.append("")
+        self.append_slot()
+        self.slot_edits[-1].setFocus()
+
     def retranslate_ui(self):
         self.del_btn.setText(I18n.tr("del_group"))
+        self.add_window_btn.setText(I18n.tr("add_tracked_window"))
         for i, lbl in enumerate(self.slot_labels):
             lbl.setText(f"{I18n.tr('slot')} {i+1}:")
         for le in self.slot_edits:
@@ -346,6 +374,9 @@ class TabTimerSettings(QWidget):
         top_bar.addStretch()
         top_bar.addWidget(self.btn_add_timer)
         layout_timers.addLayout(top_bar)
+        self.btn_add_fallback = QPushButton(I18n.tr("add_other_timer"))
+        self.btn_add_fallback.clicked.connect(self.add_fallback_timer)
+        layout_timers.addWidget(self.btn_add_fallback, 0, Qt.AlignmentFlag.AlignLeft)
 
         scroll_t = QScrollArea()
         scroll_t.setWidgetResizable(True)
@@ -402,12 +433,20 @@ class TabTimerSettings(QWidget):
         config_mgr.save_config()
 
     def add_timer(self):
+        self._add_timer(False)
+
+    def add_fallback_timer(self):
+        if not has_fallback_timer(config_mgr.config):
+            self._add_timer(True)
+
+    def _add_timer(self, fallback):
         groups = list(config_mgr.config.get("groups", {}).keys())
         first_g = groups[0] if groups else ""
         new_t = {
             "id": str(uuid.uuid4()),
-            "name": f"{I18n.tr('default_timer_name')} {len(config_mgr.config.get('timers', [])) + 1}",
-            "group": first_g,
+            "name": I18n.tr("other_timer_name") if fallback else f"{I18n.tr('default_timer_name')} {len(config_mgr.config.get('timers', [])) + 1}",
+            "group": "" if fallback else first_g,
+            "is_fallback": fallback,
             "idle_timeout": 5,
             "elapsed_seconds": 0,
             "x": 200, "y": 300,
@@ -463,6 +502,7 @@ class TabTimerSettings(QWidget):
         self.settings_changed.emit()
 
     def refresh_timer_list(self):
+        self.btn_add_fallback.setEnabled(not has_fallback_timer(config_mgr.config))
         self.card_map.clear()
         while self.timer_grid.count():
             item = self.timer_grid.takeAt(0)
@@ -489,6 +529,7 @@ class TabTimerSettings(QWidget):
         
         self.snap_cb.setText(I18n.tr("magnetic_snap"))
         self.btn_add_timer.setText(I18n.tr("add_timer"))
+        self.btn_add_fallback.setText(I18n.tr("add_other_timer"))
         self.new_g_edit.setPlaceholderText(I18n.tr("new_group_placeholder"))
         self.btn_create_g.setText(I18n.tr("create_group"))
 

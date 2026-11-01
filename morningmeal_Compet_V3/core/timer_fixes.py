@@ -122,7 +122,7 @@ class CurrentTimerController:
         if timer is None:
             return True
         try:
-            return (self.session.matched_id==timer_id and not timer.get('paused',False)
+            return (timer_id in self.session.matched_ids and not timer.get('paused',False)
                     and self.allowed() and self.idle() <= timer.get('idle_timeout',5))
         except Exception:
             return False

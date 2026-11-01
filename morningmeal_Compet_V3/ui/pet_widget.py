@@ -8,6 +8,7 @@ from PyQt6.QtGui import QPainter, QPixmap, QWheelEvent, QContextMenuEvent, QMous
 from core.config_manager import config_mgr, SKINS_DIR
 from core.i18n import I18n
 from core.activity_engine import activity_engine
+from core.timer_policy import has_fallback_timer
 
 class PetWidget(QWidget):
     dock_changed = pyqtSignal()
@@ -99,7 +100,7 @@ class PetWidget(QWidget):
     def trigger_bounce(self, key_payload):
         # 바인딩된 타이머가 있을 때 활성 상태가 아니면 무반응
         bound_id = self.pet_data.get("bound_timer_id", "")
-        if bound_id:
+        if bound_id and not has_fallback_timer(config_mgr.config):
             if hasattr(activity_engine, "is_timer_active") and not activity_engine.is_timer_active(bound_id):
                 return
 

@@ -4,6 +4,12 @@ from PyQt6.QtCore import QLocale, QObject, pyqtSignal
 TRANSLATIONS = {
     # ----------------------------- 1. 한국어 (ko) -----------------------------
     "ko": {
+        "add_tracked_window": "+ 추적 창 추가",
+        "add_other_timer": "+ 기타 타이머 추가",
+        "other_timer_name": "기타",
+        "fallback_scope": "일치하지 않는 작업",
+        "fallback_hint": "다른 타이머와 일치하지 않는 작업을 측정합니다. 이 타이머가 있으면 펫이 모든 앱의 입력에 반응합니다.",
+        "fallback_label": "범위:",
         "app_title": "morningmeal_ComPet - 환경 설정",
         "tab_timer": "워크 타이머 설정",
         "tab_pet": "타이핑 펫 설정",
@@ -108,6 +114,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 2. 영어 (en) -----------------------------
     "en": {
+        "add_tracked_window": "+ Add tracked window",
+        "add_other_timer": "+ Add Other timer",
+        "other_timer_name": "Other",
+        "fallback_scope": "Unmatched tasks",
+        "fallback_hint": "Tracks tasks not matched by any other timer. While this timer exists, pets respond to keyboard and mouse input globally.",
+        "fallback_label": "Scope:",
         "app_title": "morningmeal_ComPet - Settings",
         "tab_timer": "Work Timer",
         "tab_pet": "Typing Pet",
@@ -208,6 +220,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 3. 일본어 (ja) -----------------------------
     "ja": {
+        "add_tracked_window": "+ 追跡ウィンドウを追加",
+        "add_other_timer": "+ 「その他」タイマーを追加",
+        "other_timer_name": "その他",
+        "fallback_scope": "未一致の作業",
+        "fallback_hint": "他のタイマーに一致しない作業を計測します。このタイマーがあるとペットは全アプリの入力に反応します。",
+        "fallback_label": "対象:",
         "app_title": "morningmeal_ComPet - 設定",
         "tab_timer": "タイマー設定",
         "tab_pet": "ペット設定",
@@ -308,6 +326,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 4. 중국어 간체 (zh_CN) -----------------------------
     "zh_CN": {
+        "add_tracked_window": "+ 添加追踪窗口",
+        "add_other_timer": "+ 添加“其他”计时器",
+        "other_timer_name": "其他",
+        "fallback_scope": "未匹配的任务",
+        "fallback_hint": "未被其他计时器匹配的任务会计入此处。存在此计时器时，宠物全局响应键鼠。",
+        "fallback_label": "范围:",
         "app_title": "morningmeal_ComPet - 设置",
         "tab_timer": "工作计时器设置",
         "tab_pet": "打字宠物设置",
@@ -408,6 +432,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 5. 중국어 번체 (zh_TW) -----------------------------
     "zh_TW": {
+        "add_tracked_window": "+ 新增追蹤視窗",
+        "add_other_timer": "+ 新增「其他」計時器",
+        "other_timer_name": "其他",
+        "fallback_scope": "未匹配的工作",
+        "fallback_hint": "未被其他計時器匹配的工作會計入此處。存在此計時器時，寵物全域回應鍵鼠。",
+        "fallback_label": "範圍:",
         "app_title": "morningmeal_ComPet - 設定",
         "tab_timer": "工作計時器設定",
         "tab_pet": "打字寵物設定",
