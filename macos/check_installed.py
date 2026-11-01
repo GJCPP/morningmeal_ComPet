@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Read-only check that a repaired ComPet bundle matches this branch's patch."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / 'morningmeal_Compet_V3/core/macos_compat.py'
+
+def sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--app', type=Path, default=Path('/Applications/Compet-V3.app'))
+    args = parser.parse_args()
+    baseline = json.loads((ROOT / 'macos/installed-baseline.json').read_text())
+    hook = args.app / 'Contents/Resources/compet_macos_compat.py'
+    original_main = args.app / 'Contents/Resources/compet_original_main.marshal'
+    if not hook.is_file() or not original_main.is_file():
+        parser.error('Expected a locally repaired bundle containing its hook and saved original main.')
+    if sha256(SOURCE) != sha256(hook):
+        parser.error('Installed compatibility hook differs from repository source.')
+    if sha256(original_main) != baseline['original_main_sha256']:
+        parser.error('Saved original main differs from the captured installed baseline.')
+    subprocess.run(['codesign', '--verify', '--deep', '--strict', str(args.app)], check=True)
+    print('PASS: repository patch matches installed hook; original main matches baseline; signature is valid.')
+
+if __name__ == '__main__':
+    main()

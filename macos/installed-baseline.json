@@ -1,0 +1,18 @@
+{
+  "captured_on": "2026-11-01",
+  "upstream_url": "https://github.com/morningmeal/morningmeal_ComPet",
+  "upstream_commit": "32b4cac80d3b769bb666bc3076670c6b141c2380",
+  "installed_app": "/Applications/Compet-V3.app",
+  "bundle_identifier": "Compet-V3",
+  "bundle_version": "0.0.0",
+  "compat_sha256": "9279f37bbe978bc033bb24e12b7c88bde0a420e4d0c94c777ab0ae64c1cb0e24",
+  "original_main_sha256": "9e18e2815477dd40681746461d3bd1db3e38ac7debf692ba0e23c4326f8e9901",
+  "executable_sha256": "66498ed473ee35e65dd0a46417198a72b5c1a856126d97101bb9d52e4de9e5d7",
+  "verified_environment": {
+    "os": "macOS 15.5 (24F74)",
+    "architecture": "arm64",
+    "bundled_python": "3.11.9",
+    "bundled_qt": "6.11.2"
+  },
+  "source_rebuild_verified": false
+}

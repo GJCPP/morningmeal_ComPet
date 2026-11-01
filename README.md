@@ -1,3 +1,5 @@
+> 本地 macOS 修复分支：维护说明见 [macos/README.md](macos/README.md)。
+
 # 🐾 morningmeal ComPet
 
 [한국어](#-한국어) | [English](#-english) | [日本語](#-日本語) | [简体中文](#-简体中文) | [繁體中文](#-繁體中文)

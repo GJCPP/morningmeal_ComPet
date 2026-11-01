@@ -19,3 +19,12 @@ env/
 *.log
 Thumbs.db
 Desktop.ini
+
+# Local macOS repair and user artifacts
+.DS_Store
+.venv/
+.env
+*.app/
+*.zip
+*.marshal
+macos/artifacts/

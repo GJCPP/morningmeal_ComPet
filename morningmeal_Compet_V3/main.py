@@ -17,6 +17,11 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt
 
+# Load local macOS fixes before importing functions and classes patched by them.
+# The existing offscreen smoke-test path has no Cocoa windows.
+if sys.platform == 'darwin' and os.environ.get('QT_QPA_PLATFORM', '').lower() not in ('offscreen', 'minimal'):
+    import core.macos_compat
+
 from core.config_manager import config_mgr, CRASH_LOG_PATH, BUNDLE_DIR
 from core.i18n import I18n
 from core.input_engine import start_input_engine, input_bridge

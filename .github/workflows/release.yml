@@ -105,13 +105,13 @@ jobs:
             main.py
           cd dist
           codesign --force --deep --sign - "Compet-V3.app"
-          zip -r "${{ github.workspace }}/Compet-V3-macOS.zip" Compet-V3.app
+          zip -ry "${{ github.workspace }}/Compet-V3-macOS.zip" Compet-V3.app
 
       # ComPet V3 단독 스모크 테스트 (크래시 로그 자동 출력 포함)
       - name: Verify macOS App Bundle
         run: |
           echo "=== 1. Codesign 검증 ==="
-          codesign --verify --verbose "${{ github.workspace }}/morningmeal_Compet_V3/dist/Compet-V3.app"
+          codesign --verify --deep --strict --verbose "${{ github.workspace }}/morningmeal_Compet_V3/dist/Compet-V3.app"
 
           echo "=== 2. 실행 및 초기화 크래시 검증 (3초 스모크 테스트) ==="
           export QT_QPA_PLATFORM=offscreen
