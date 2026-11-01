@@ -7,7 +7,7 @@
   "bundle_version": "0.0.0",
   "compat_sha256": "af381fe58b4cb69468a5728596081880597e4361f3c89329d01a5b694ee5b0a3",
   "original_main_sha256": "9e18e2815477dd40681746461d3bd1db3e38ac7debf692ba0e23c4326f8e9901",
-  "executable_sha256": "f3f5b23afc6155314bdc222cc7383259f9c5edcd96fd57c6482409b123cfd1b7",
+  "executable_sha256": "a5da84038fe81750a1049a1ea3c5f2d65f90a2bc5f761f36a9dc487e8b7f6eaa",
   "verified_environment": {
     "os": "macOS 15.5 (24F74)",
     "architecture": "arm64",
@@ -16,5 +16,5 @@
   },
   "source_rebuild_verified": false,
   "docking_sha256": "fa8e80e47d87a738f26cbb02e66070a854b75a6a0a9552290ed0b997cd1af037",
-  "interaction_fixes_sha256": "c529947e0fb2886a71c9ca9190777fbf3c9454c4fb594f4e290e728a60576df9"
+  "interaction_fixes_sha256": "3fb085cc48228d1122e532a1264fa8149b38aec2c13199c522c982a6f91d1ba8"
 }

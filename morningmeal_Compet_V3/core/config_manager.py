@@ -56,14 +56,12 @@ DEFAULT_CONFIG = {
         "click_volume": 50,
         "click_sound_path": ""
     },
-    "groups": {
-        "기본 그룹": ["", "", ""]
-    },
+    "groups": {},
     "timers": [
         {
             "id": str(uuid.uuid4()),
             "name": "작업 1",
-            "group": "기본 그룹",
+            "group": "",
             "idle_timeout": 5,
             "elapsed_seconds": 0,
             "x": 200,
@@ -108,7 +106,7 @@ class ConfigManager:
                 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
                     for k, v in loaded.items():
-                        if isinstance(v, dict) and k in data:
+                        if isinstance(v, dict) and k in data and k != "groups":
                             data[k].update(v)
                         else:
                             data[k] = v

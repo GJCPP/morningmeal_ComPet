@@ -21,6 +21,15 @@ def run():
     saves = []
     passed = []
     timers = []
+    from core.interaction_fixes import _remove_unused_default_group
+    import core.config_manager as config_module
+    assert config_module.DEFAULT_CONFIG['groups'] == {}
+    legacy = {'groups': {'기본 그룹':['','',''], '工作':['Logseq']}, 'timers':[{'group':'工作','elapsed_seconds':130}]}
+    assert _remove_unused_default_group(legacy)
+    assert legacy['groups'] == {'工作':['Logseq']} and legacy['timers'][0]['elapsed_seconds'] == 130
+    assert not _remove_unused_default_group({'groups':{'기본 그룹':['Logseq']}, 'timers':[]})
+    assert not _remove_unused_default_group({'groups':{'기본 그룹':['','','']}, 'timers':[{'group':'기본 그룹'}]})
+    passed.append('no automatic group; only empty unused legacy group removed; active and populated groups preserved')
     try:
         config_mgr.config = json.loads(json.dumps(old_config))
         config_mgr.config['settings'].update(magnetic_snap=True, snap_distance=15, clamp_to_screen=False, dark_mode=False)

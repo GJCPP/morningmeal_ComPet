@@ -131,10 +131,40 @@ class _TimerDragFilter(QObject):
         return False
 
 
+def _remove_unused_default_group(data):
+    """Remove only the empty, unreferenced group shipped by the old release."""
+    name = '기본 그룹'
+    groups = data.get('groups', {})
+    if name not in groups:
+        return False
+    if any(str(slot).strip() for slot in groups[name]):
+        return False
+    if any(timer.get('group') == name for timer in data.get('timers', [])):
+        return False
+    del groups[name]
+    return True
+
+
+def _configure_default_groups():
+    # The old packaged ConfigManager has already constructed its singleton.
+    # Replace its defaults, then reload before any windows or engines start.
+    import core.config_manager as config_module
+    had_legacy_default = '기본 그룹' in config_module.DEFAULT_CONFIG.get('groups', {})
+    config_module.DEFAULT_CONFIG['groups'] = {}
+    for timer in config_module.DEFAULT_CONFIG.get('timers', []):
+        if timer.get('group') == '기본 그룹':
+            timer['group'] = ''
+    if had_legacy_default:
+        config_mgr.config = config_mgr.load_config()
+    if _remove_unused_default_group(config_mgr.config):
+        config_mgr.save_config()
+
+
 def install():
     global _INSTALLED
     if _INSTALLED:
         return
+    _configure_default_groups()
     for language, values in _TRANSLATIONS.items():
         TRANSLATIONS[language].update(values)
 
