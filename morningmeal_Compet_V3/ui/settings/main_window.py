@@ -49,7 +49,7 @@ class MainSettingWindow(QWidget):
         self.tab_pet = TabPetSettings()
         self.tab_sound = TabSoundSettings()
 
-        self.tab_timer.settings_changed.connect(self.on_child_settings_changed)
+        self.tab_timer.settings_changed.connect(self.on_timer_settings_changed)
         self.tab_pet.settings_changed.connect(self.on_child_settings_changed)
 
         self.tabs.addTab(self.tab_timer, I18n.tr("tab_timer"))
@@ -91,10 +91,15 @@ class MainSettingWindow(QWidget):
         r_layout.addWidget(content)
         outer.addWidget(self.root)
 
-    def on_child_settings_changed(self):
+    def on_timer_settings_changed(self):
+        # The timer tab manages its own cards. Rebuilding here destroys the
+        # input receiving focus when a timer name finishes editing.
         self.tab_pet.refresh_pet_list()
-        self.tab_timer.refresh_timer_list()
         self.settings_updated.emit()
+
+    def on_child_settings_changed(self):
+        self.tab_timer.refresh_timer_list()
+        self.on_timer_settings_changed()
 
     def toggle_theme(self):
         self.is_dark = not self.is_dark
