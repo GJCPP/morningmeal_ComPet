@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QPushButton, QComboBox, QLabel
 from PyQt6.QtCore import Qt
 from core.config_manager import config_mgr
 from core.i18n import I18n
+from ui.timer_statistics import show_timer_statistics
 
 class TimerMiniDialog(QDialog):
     def __init__(self, timer_data, open_main_settings_callback, parent=None):
@@ -46,6 +47,10 @@ class TimerMiniDialog(QDialog):
         self.group_combo.currentTextChanged.connect(self.on_group_changed)
         layout.addWidget(self.group_combo)
 
+        self.statistics_btn = QPushButton(I18n.tr("time_distribution"))
+        self.statistics_btn.clicked.connect(self.open_statistics)
+        layout.addWidget(self.statistics_btn)
+
         self.main_btn = QPushButton(I18n.tr("open_settings"))
         self.main_btn.clicked.connect(self.open_main)
         layout.addWidget(self.main_btn)
@@ -61,6 +66,10 @@ class TimerMiniDialog(QDialog):
         config_mgr.save_config()
         if self.parent_widget and hasattr(self.parent_widget, "update_metadata"):
             self.parent_widget.update_metadata()
+
+    def open_statistics(self):
+        self.close()
+        show_timer_statistics()
 
     def open_main(self):
         self.close()

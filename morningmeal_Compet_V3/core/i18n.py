@@ -4,6 +4,14 @@ from PyQt6.QtCore import QLocale, QObject, pyqtSignal
 TRANSLATIONS = {
     # ----------------------------- 1. 한국어 (ko) -----------------------------
     "ko": {
+        "time_distribution": "시간 분포",
+        "stats_total": "누적 합계: {time}",
+        "stats_note": "겹치는 시간은 각 타이머에 별도로 누적됩니다. 비율은 모든 타이머의 누적 합계를 기준으로 합니다.",
+        "stats_empty": "누적 시간이 없습니다",
+        "stats_timer": "타이머",
+        "stats_duration": "누적 시간",
+        "stats_share": "비율",
+        "stats_close": "닫기",
         "add_tracked_window": "+ 추적 창 추가",
         "add_other_timer": "+ 기타 타이머 추가",
         "other_timer_name": "기타",
@@ -114,6 +122,14 @@ TRANSLATIONS = {
 
     # ----------------------------- 2. 영어 (en) -----------------------------
     "en": {
+        "time_distribution": "Time distribution",
+        "stats_total": "Total tracked: {time}",
+        "stats_note": "Timers accumulate independently, including overlaps. Shares use the sum of all timer totals.",
+        "stats_empty": "No tracked time yet",
+        "stats_timer": "Timer",
+        "stats_duration": "Tracked time",
+        "stats_share": "Share",
+        "stats_close": "Close",
         "add_tracked_window": "+ Add tracked window",
         "add_other_timer": "+ Add Other timer",
         "other_timer_name": "Other",
@@ -220,6 +236,14 @@ TRANSLATIONS = {
 
     # ----------------------------- 3. 일본어 (ja) -----------------------------
     "ja": {
+        "time_distribution": "時間の内訳",
+        "stats_total": "累計合計: {time}",
+        "stats_note": "重複時間は各タイマーに加算されます。割合は全タイマーの累計合計に基づきます。",
+        "stats_empty": "まだ記録がありません",
+        "stats_timer": "タイマー",
+        "stats_duration": "累計時間",
+        "stats_share": "割合",
+        "stats_close": "閉じる",
         "add_tracked_window": "+ 追跡ウィンドウを追加",
         "add_other_timer": "+ 「その他」タイマーを追加",
         "other_timer_name": "その他",
@@ -326,6 +350,14 @@ TRANSLATIONS = {
 
     # ----------------------------- 4. 중국어 간체 (zh_CN) -----------------------------
     "zh_CN": {
+        "time_distribution": "时间分布",
+        "stats_total": "累计合计：{time}",
+        "stats_note": "各计时器独立累计，重叠时间会分别计入。占比按所有计时器累计时间之和计算。",
+        "stats_empty": "暂无累计时间",
+        "stats_timer": "计时器",
+        "stats_duration": "累计时长",
+        "stats_share": "占比",
+        "stats_close": "关闭",
         "add_tracked_window": "+ 添加追踪窗口",
         "add_other_timer": "+ 添加“其他”计时器",
         "other_timer_name": "其他",
@@ -432,6 +464,14 @@ TRANSLATIONS = {
 
     # ----------------------------- 5. 중국어 번체 (zh_TW) -----------------------------
     "zh_TW": {
+        "time_distribution": "時間分布",
+        "stats_total": "累計合計：{time}",
+        "stats_note": "各計時器獨立累計，重疊時間會分別計入。占比以所有計時器累計時間之和計算。",
+        "stats_empty": "尚無累計時間",
+        "stats_timer": "計時器",
+        "stats_duration": "累計時長",
+        "stats_share": "占比",
+        "stats_close": "關閉",
         "add_tracked_window": "+ 新增追蹤視窗",
         "add_other_timer": "+ 新增「其他」計時器",
         "other_timer_name": "其他",

@@ -10,6 +10,7 @@ from core.config_manager import config_mgr
 from core.i18n import I18n
 from core.activity_engine import activity_engine
 from core.timer_policy import has_fallback_timer
+from ui.timer_statistics import show_timer_statistics
 from ui.components import (
     ConfirmDialog, AlertDialog, capture_bridge, 
     start_window_click_capture, cancel_window_click_capture, format_time
@@ -376,7 +377,13 @@ class TabTimerSettings(QWidget):
         layout_timers.addLayout(top_bar)
         self.btn_add_fallback = QPushButton(I18n.tr("add_other_timer"))
         self.btn_add_fallback.clicked.connect(self.add_fallback_timer)
-        layout_timers.addWidget(self.btn_add_fallback, 0, Qt.AlignmentFlag.AlignLeft)
+        actions = QHBoxLayout()
+        actions.addWidget(self.btn_add_fallback)
+        actions.addStretch()
+        self.btn_statistics = QPushButton(I18n.tr("time_distribution"))
+        self.btn_statistics.clicked.connect(show_timer_statistics)
+        actions.addWidget(self.btn_statistics)
+        layout_timers.addLayout(actions)
 
         scroll_t = QScrollArea()
         scroll_t.setWidgetResizable(True)
@@ -530,6 +537,7 @@ class TabTimerSettings(QWidget):
         self.snap_cb.setText(I18n.tr("magnetic_snap"))
         self.btn_add_timer.setText(I18n.tr("add_timer"))
         self.btn_add_fallback.setText(I18n.tr("add_other_timer"))
+        self.btn_statistics.setText(I18n.tr("time_distribution"))
         self.new_g_edit.setPlaceholderText(I18n.tr("new_group_placeholder"))
         self.btn_create_g.setText(I18n.tr("create_group"))
 
