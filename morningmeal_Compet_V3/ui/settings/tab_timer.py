@@ -18,6 +18,7 @@ from ui.components import (
 
 class TimerCardWidget(QFrame):
     changed = pyqtSignal()
+    order_requested = pyqtSignal(str, int)
     name_updated = pyqtSignal(str, str)  # (timer_id, new_name) -> 경량 실시간 이름 반영
 
     def __init__(self, timer_data, remove_callback, parent=None):
@@ -47,6 +48,19 @@ class TimerCardWidget(QFrame):
         del_btn.clicked.connect(lambda: self.remove_callback(self.timer_data))
         top_layout.addWidget(del_btn)
         layout.addLayout(top_layout)
+
+        self._position = 1
+        order_layout = QHBoxLayout()
+        self.position_label = QLabel(I18n.tr("timer_order").format(position=self._position))
+        order_layout.addWidget(self.position_label)
+        order_layout.addStretch()
+        self.move_up_btn = QPushButton("↑ " + I18n.tr("move_up"))
+        self.move_down_btn = QPushButton("↓ " + I18n.tr("move_down"))
+        for button, direction in ((self.move_up_btn, -1), (self.move_down_btn, 1)):
+            button.setFixedHeight(24)
+            button.clicked.connect(lambda checked=False, step=direction: self.order_requested.emit(self.timer_data['id'], step))
+            order_layout.addWidget(button)
+        layout.addLayout(order_layout)
 
         # 그룹 배정
         group_layout = QHBoxLayout()
@@ -100,6 +114,12 @@ class TimerCardWidget(QFrame):
 
         I18n.language_changed.connect(self.retranslate_ui)
 
+    def set_order_position(self, index, count):
+        self._position = index + 1
+        self.position_label.setText(I18n.tr("timer_order").format(position=self._position))
+        self.move_up_btn.setEnabled(index > 0)
+        self.move_down_btn.setEnabled(index < count - 1)
+
     def update_time_display(self, seconds: int):
         """실시간 틱 전달받아 라벨 갱신"""
         self.timer_data["elapsed_seconds"] = seconds
@@ -130,6 +150,9 @@ class TimerCardWidget(QFrame):
         self.group_combo.blockSignals(False)
 
     def retranslate_ui(self):
+        self.position_label.setText(I18n.tr("timer_order").format(position=self._position))
+        self.move_up_btn.setText("↑ " + I18n.tr("move_up"))
+        self.move_down_btn.setText("↓ " + I18n.tr("move_down"))
         self.lbl_g.setText(I18n.tr("fallback_label" if self.timer_data.get("is_fallback") else "group_label"))
         self.fallback_hint.setText(I18n.tr("fallback_hint"))
         if self.timer_data.get("is_fallback"):
@@ -178,14 +201,8 @@ class TimerCardWidget(QFrame):
         dlg = ConfirmDialog(I18n.tr("reset_confirm_title"), I18n.tr("reset_confirm_msg"), is_danger=False, parent=self)
         if dlg.exec() == ConfirmDialog.DialogCode.Accepted:
             t_id = self.timer_data.get("id")
-            self.timer_data["elapsed_seconds"] = 0
+            activity_engine.reset_timers([t_id])
             self.time_label.setText(format_time(0))
-            config_mgr.save_config()
-            
-            # 1. ActivityEngine 틱 시그널로 0초 즉시 브로드캐스트 (바탕화면 위젯 즉각 반영)
-            activity_engine.tick.emit({t_id: 0})
-            
-            # 2. 설정 변경 이벤트 발행
             self.changed.emit()
 
 
@@ -383,6 +400,10 @@ class TabTimerSettings(QWidget):
         self.btn_statistics = QPushButton(I18n.tr("time_distribution"))
         self.btn_statistics.clicked.connect(show_timer_statistics)
         actions.addWidget(self.btn_statistics)
+        self.btn_reset_all = QPushButton(I18n.tr("reset_all_timers"))
+        self.btn_reset_all.setObjectName("dangerBtn")
+        self.btn_reset_all.clicked.connect(self.reset_all_timers)
+        actions.addWidget(self.btn_reset_all)
         layout_timers.addLayout(actions)
 
         scroll_t = QScrollArea()
@@ -438,6 +459,29 @@ class TabTimerSettings(QWidget):
     def on_snap_toggled(self, checked):
         config_mgr.config.setdefault("settings", {})["magnetic_snap"] = checked
         config_mgr.save_config()
+
+    def move_timer(self, timer_id, direction):
+        if direction not in (-1, 1):
+            return
+        timers = config_mgr.config.get("timers", [])
+        index = next((i for i, timer in enumerate(timers) if timer['id'] == timer_id), None)
+        if index is None or not 0 <= index + direction < len(timers):
+            return
+        target = index + direction
+        timers[index], timers[target] = timers[target], timers[index]
+        config_mgr.save_config()
+        self.refresh_timer_list()
+        self.settings_changed.emit()
+
+    def reset_all_timers(self):
+        timers = config_mgr.config.get("timers", [])
+        if not timers:
+            return
+        dialog = ConfirmDialog(I18n.tr("reset_all_title"),
+            I18n.tr("reset_all_message").format(count=len(timers)), is_danger=True, parent=self)
+        if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
+            activity_engine.reset_timers()
+            self.settings_changed.emit()
 
     def add_timer(self):
         self._add_timer(False)
@@ -510,6 +554,7 @@ class TabTimerSettings(QWidget):
 
     def refresh_timer_list(self):
         self.btn_add_fallback.setEnabled(not has_fallback_timer(config_mgr.config))
+        self.btn_reset_all.setEnabled(bool(config_mgr.config.get("timers", [])))
         self.card_map.clear()
         while self.timer_grid.count():
             item = self.timer_grid.takeAt(0)
@@ -517,6 +562,8 @@ class TabTimerSettings(QWidget):
 
         for idx, t in enumerate(config_mgr.config.get("timers", [])):
             card = TimerCardWidget(t, self.remove_timer)
+            card.set_order_position(idx, len(config_mgr.config.get("timers", [])))
+            card.order_requested.connect(self.move_timer)
             card.changed.connect(self.settings_changed.emit)
             card.name_updated.connect(self.timer_name_changed.emit)
             self.card_map[t.get("id")] = card
@@ -538,6 +585,7 @@ class TabTimerSettings(QWidget):
         self.btn_add_timer.setText(I18n.tr("add_timer"))
         self.btn_add_fallback.setText(I18n.tr("add_other_timer"))
         self.btn_statistics.setText(I18n.tr("time_distribution"))
+        self.btn_reset_all.setText(I18n.tr("reset_all_timers"))
         self.new_g_edit.setPlaceholderText(I18n.tr("new_group_placeholder"))
         self.btn_create_g.setText(I18n.tr("create_group"))
 

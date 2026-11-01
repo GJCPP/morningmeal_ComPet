@@ -127,6 +127,12 @@ class CurrentTimerController:
         except Exception:
             return False
 
+    def on_timers_reset(self, timer_ids):
+        # Discard pre-reset fractional seconds and the interval crossing reset.
+        for timer_id in timer_ids:
+            self.session.fractions.pop(timer_id, None)
+        self.session.counting_ids.difference_update(timer_ids)
+
     def stop(self):
         self.engine.running = False
         timer = getattr(self.engine,'_current_timer_poll',None)
@@ -183,6 +189,7 @@ def install(foreground=None, idle=None, allowed=None):
         controller.allowed = allowed
     if _INSTALLED:
         return
+    activity_module.activity_engine.timers_reset.connect(controller.on_timers_reset)
     if migrate_preferences(config_mgr.config):
         config_mgr.save_config()
     controller.session.display_id = config_mgr.config['settings'].get('recent_timer_id')

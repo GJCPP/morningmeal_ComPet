@@ -4,6 +4,12 @@ from PyQt6.QtCore import QLocale, QObject, pyqtSignal
 TRANSLATIONS = {
     # ----------------------------- 1. 한국어 (ko) -----------------------------
     "ko": {
+        "timer_order": "순서 {position}",
+        "move_up": "위로",
+        "move_down": "아래로",
+        "reset_all_timers": "전체 초기화",
+        "reset_all_title": "모든 타이머 초기화",
+        "reset_all_message": "타이머 {count}개의 누적 시간을 모두 0으로 초기화할까요? 되돌릴 수 없습니다. 타이머, 그룹과 순서는 유지됩니다.",
         "time_distribution": "시간 분포",
         "stats_total": "누적 합계: {time}",
         "stats_note": "겹치는 시간은 각 타이머에 별도로 누적됩니다. 비율은 모든 타이머의 누적 합계를 기준으로 합니다.",
@@ -122,6 +128,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 2. 영어 (en) -----------------------------
     "en": {
+        "timer_order": "Order {position}",
+        "move_up": "Up",
+        "move_down": "Down",
+        "reset_all_timers": "Reset all",
+        "reset_all_title": "Reset all timers",
+        "reset_all_message": "Reset the tracked time of all {count} timers to zero? This cannot be undone. Timers, groups and order are preserved.",
         "time_distribution": "Time distribution",
         "stats_total": "Total tracked: {time}",
         "stats_note": "Timers accumulate independently, including overlaps. Shares use the sum of all timer totals.",
@@ -236,6 +248,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 3. 일본어 (ja) -----------------------------
     "ja": {
+        "timer_order": "順序 {position}",
+        "move_up": "上へ",
+        "move_down": "下へ",
+        "reset_all_timers": "すべてリセット",
+        "reset_all_title": "全タイマーをリセット",
+        "reset_all_message": "全 {count} 個のタイマーの累計時間をゼロにしますか？元に戻せません。タイマー、グループ、順序は保持されます。",
         "time_distribution": "時間の内訳",
         "stats_total": "累計合計: {time}",
         "stats_note": "重複時間は各タイマーに加算されます。割合は全タイマーの累計合計に基づきます。",
@@ -350,6 +368,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 4. 중국어 간체 (zh_CN) -----------------------------
     "zh_CN": {
+        "timer_order": "顺序 {position}",
+        "move_up": "上移",
+        "move_down": "下移",
+        "reset_all_timers": "全部清零",
+        "reset_all_title": "清零所有计时器",
+        "reset_all_message": "确定将全部 {count} 个计时器的累计时间清零？此操作无法撤销，计时器、分组和排序会保留。",
         "time_distribution": "时间分布",
         "stats_total": "累计合计：{time}",
         "stats_note": "各计时器独立累计，重叠时间会分别计入。占比按所有计时器累计时间之和计算。",
@@ -464,6 +488,12 @@ TRANSLATIONS = {
 
     # ----------------------------- 5. 중국어 번체 (zh_TW) -----------------------------
     "zh_TW": {
+        "timer_order": "順序 {position}",
+        "move_up": "上移",
+        "move_down": "下移",
+        "reset_all_timers": "全部歸零",
+        "reset_all_title": "歸零所有計時器",
+        "reset_all_message": "確定將全部 {count} 個計時器的累計時間歸零？此操作無法復原，計時器、群組及順序會保留。",
         "time_distribution": "時間分布",
         "stats_total": "累計合計：{time}",
         "stats_note": "各計時器獨立累計，重疊時間會分別計入。占比以所有計時器累計時間之和計算。",

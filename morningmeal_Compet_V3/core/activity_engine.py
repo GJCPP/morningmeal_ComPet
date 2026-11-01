@@ -10,6 +10,7 @@ from core.window_tracker import get_active_window_info
 class ActivityEngine(QObject):
     tick = pyqtSignal(dict)  # {timer_id: elapsed_seconds}
     active_window_changed = pyqtSignal(str)
+    timers_reset = pyqtSignal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -23,6 +24,19 @@ class ActivityEngine(QObject):
         self.m_listener = None
         self.k_listener = None
         self.worker_thread = None
+
+    def reset_timers(self, timer_ids=None):
+        targets = set(timer_ids) if timer_ids is not None else None
+        updated = {}
+        for timer in config_mgr.config.get('timers', []):
+            if targets is None or timer['id'] in targets:
+                timer['elapsed_seconds'] = 0
+                updated[timer['id']] = 0
+        if updated:
+            self.timers_reset.emit(list(updated))
+            config_mgr.save_config()
+            self.tick.emit(updated)
+        return updated
 
     def start(self):
         if self.running:
