@@ -11,3 +11,10 @@
 - Local production updates must use `macos/sign_app.py` with the existing dedicated identity receipt. Do not replace it with ad-hoc signing or regenerate the key. Identity creation and code-signing trust changes require explicit user approval; private keys never enter Git or CI.
 
 - Current timing behavior is implemented by `core/timer_fixes.py` and `core/timer_policy.py`, replacing the legacy ActivityEngine start path. Keep foreground selection independent of idle state, never reuse an unknown foreground, and do not display multiple native timer windows in current/recent mode. Preserve cumulative history and canonical multi-timer pet associations.
+
+## Windows local builds
+
+- Use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows/build.ps1` for local Windows updates. See `windows/README.md`.
+- Keep the fixed desktop `ComPet.lnk` and `morningmeal_Compet_V3/dist/Compet-V3/Compet-V3.exe` path. Do not create new version-suffixed executables/directories or ZIP archives for ordinary local rebuilds.
+- Let the script stage, smoke-test, and publish the build. Never force-stop a user's running app to replace it; ask them to exit through the tray menu if the fixed app is running.
+- Run the Qt editing regression with `.venv/Scripts/python.exe -m unittest discover -s tests -p 'test_*.py' -v` when changing timer settings.
