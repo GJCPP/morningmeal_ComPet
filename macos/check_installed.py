@@ -23,7 +23,7 @@ def main():
         parser.error('Expected a locally repaired bundle containing its hook and saved original main.')
     if sha256(SOURCE) != sha256(hook):
         parser.error('Installed compatibility hook differs from repository source.')
-    for source_name, bundle_name in [('docking.py', 'compet_docking.py'), ('interaction_fixes.py', 'compet_interaction_fixes.py')]:
+    for source_name, bundle_name in [('docking.py', 'compet_docking.py'), ('interaction_fixes.py', 'compet_interaction_fixes.py'), ('timer_policy.py', 'compet_timer_policy.py'), ('timer_fixes.py', 'compet_timer_fixes.py'), ('macos_foreground.py', 'compet_macos_foreground.py')]:
         source = ROOT / 'morningmeal_Compet_V3/core' / source_name
         installed = args.app / 'Contents/Resources' / bundle_name
         if not installed.is_file() or sha256(source) != sha256(installed):

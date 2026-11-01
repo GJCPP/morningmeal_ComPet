@@ -9,3 +9,5 @@
 - Fullscreen/window/permission behavior requires real macOS GUI verification. An offscreen smoke test does not prove those behaviors.
 
 - Local production updates must use `macos/sign_app.py` with the existing dedicated identity receipt. Do not replace it with ad-hoc signing or regenerate the key. Identity creation and code-signing trust changes require explicit user approval; private keys never enter Git or CI.
+
+- Current timing behavior is implemented by `core/timer_fixes.py` and `core/timer_policy.py`, replacing the legacy ActivityEngine start path. Keep foreground selection independent of idle state, never reuse an unknown foreground, and do not display multiple native timer windows in current/recent mode. Preserve cumulative history and canonical multi-timer pet associations.

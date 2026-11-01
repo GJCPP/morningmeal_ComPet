@@ -24,6 +24,12 @@ if sys.platform == 'darwin' and os.environ.get('QT_QPA_PLATFORM', '').lower() no
 
 from core.interaction_fixes import install as _install_interaction_fixes
 _install_interaction_fixes()
+from core.timer_fixes import install as _install_timer_fixes
+_install_timer_fixes()
+# Explicit import keeps the native provider included in PyInstaller source builds.
+if sys.platform == 'darwin':
+    from core import macos_foreground
+
 
 from core.config_manager import config_mgr, CRASH_LOG_PATH, BUNDLE_DIR
 from core.i18n import I18n

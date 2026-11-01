@@ -322,3 +322,19 @@ def _compet_settings_init_with_permissions(self, *args, **kwargs):
     self._compet_refresh_permission_row()
 _compet_SettingsWindow._compet_refresh_permission_row = _compet_refresh_permission_row
 _compet_SettingsWindow.__init__ = _compet_settings_init_with_permissions
+
+
+# Foreground detection and one current/recent card share one timer controller.
+_compet_load_local_module('core.timer_policy', 'compet_timer_policy.py')
+_compet_native_foreground = _compet_load_local_module('core.macos_foreground', 'compet_macos_foreground.py')
+_compet_current_timers = _compet_load_local_module('core.timer_fixes', 'compet_timer_fixes.py')
+_compet_current_timers.install(foreground=_compet_native_foreground.get_active_window_info,
+                             idle=_compet_native_foreground.idle_seconds,
+                             allowed=lambda: bool(_compet_listen_allowed()))
+_compet_before_current_card_window = _compet_apply_window
+def _compet_apply_window(widget):
+    if not widget.isVisible():
+        return
+    if isinstance(widget, _compet_timer_module.TimerWidget) and not _compet_current_timers.controller.should_show(widget):
+        return
+    _compet_before_current_card_window(widget)

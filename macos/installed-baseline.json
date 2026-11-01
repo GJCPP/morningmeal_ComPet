@@ -5,9 +5,9 @@
   "installed_app": "/Applications/Compet-V3.app",
   "bundle_identifier": "Compet-V3",
   "bundle_version": "0.0.0",
-  "compat_sha256": "541aabbb6480b260ef2447954565232ecfcae05b40f951277f9e20f9074ab516",
+  "compat_sha256": "1358922f7cec28cbdc694f2d3d6e4b5a73bd544c12ccd6bb456929c2b8c2fcc3",
   "original_main_sha256": "9e18e2815477dd40681746461d3bd1db3e38ac7debf692ba0e23c4326f8e9901",
-  "executable_sha256": "42d7cef28888e115f2b9b599fc5e8c9636ef20d0410c38c38a0fe3b3b12fa98f",
+  "executable_sha256": "bcc344e7cd66f21433a7a1bbb7fa1228509a729111cb948f0cc9c868948940f5",
   "verified_environment": {
     "os": "macOS 15.5 (24F74)",
     "architecture": "arm64",
@@ -19,5 +19,8 @@
   "interaction_fixes_sha256": "3fb085cc48228d1122e532a1264fa8149b38aec2c13199c522c982a6f91d1ba8",
   "signing_identity_name": "ComPet Local Development",
   "signing_certificate_sha1": "A5D2B521EF4EC554AFCF997170E0C556C96FFDE8",
-  "signing_mode": "certificate-pinned designated requirement"
+  "signing_mode": "certificate-pinned designated requirement",
+  "timer_policy_sha256": "315268252a8fb13c087eb01d0b320d720f7357bb1101e2523216e85a3166d937",
+  "timer_fixes_sha256": "dd462d1426fe2fa7bb8b3b95a642284755b73dd390c7c4b640897f7a5256f335",
+  "macos_foreground_sha256": "65430f7d110d670ac070f92c8d557f54675e942bb894ca20ea9e16c7e3e8d595"
 }
