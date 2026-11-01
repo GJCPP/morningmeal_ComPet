@@ -40,7 +40,23 @@ python3 -m unittest discover -s macos/tests -p 'test_*.py' -v
 
 按上游依赖和流程构建源码时使用 Python 3.11；本机包的已知运行环境为 Apple Silicon、macOS 15.5、Python 3.11.9、Qt 6.11.2。当前依赖范围没有锁定，依赖升级需要重新验收。
 
-任何应用包内容变化都需要重新签名；本机使用临时签名，macOS 授权绑定代码哈希。更新后即使权限列表的开关显示开启，旧记录也可能失效。请在“隐私与安全性 → 输入监控”中移除旧 Compet-V3，重新添加 `/Applications/Compet-V3.app` 并授权；辅助功能授权如失效也按同样方式刷新。不得直接编辑 TCC 数据库或改用具有更大能力的输入模式绕过授权。
+应用现在启动时主动调用 CGRequestListenEventAccess；每次启动最多请求一次，最终批准仍由用户完成。设置中会显示键鼠互动权限状态，并提供申请/打开系统设置按钮。授权被拒绝或系统保留旧记录时不会反复弹窗；用户仍可从该入口处理。
+
+本机已从临时签名切换到专用 `ComPet Local Development` 证书，身份要求同时固定应用标识和证书指纹。私钥只保存在登录钥匙串，证书仅设置用户域 codeSign 信任，不添加网站/SSL 信任。公开指纹保存在 installed-baseline.json；本机身份凭据单保存在 `~/.config/compet-signing/identity.json`，不在 Git 中。
+
+签名校验需要在可访问登录钥匙串的正常用户环境中运行；隔离沙箱可能无法读取该用户的代码签名信任，出现 CSSMERR_TP_NOT_TRUSTED 时应先区分运行环境，不应因此放宽签名要求。
+
+后续准备好输出副本后，使用同一身份重签：
+
+```sh
+python3 macos/sign_app.py --app /path/to/prepared/Compet-V3.app
+```
+
+不要再用 `codesign --sign -` 覆盖本机正式安装。GitHub Actions 的公开产物仍为临时签名，安装到本机前也需使用上面的本地证书重签；不要把私钥上传到仓库或 CI。已在两个资源内容不同的副本中验证指定身份完全相同且签名通过。
+
+首次从旧临时签名迁移到该证书可能仍需用户再授权一次；以后继续使用同一证书可避免每次内容变化都改变指定身份。系统仍可独立撤销权限，不能承诺永久保留授权。如旧记录失效，可从应用按钮打开系统设置，必要时移除旧条目重新添加。不得直接编辑 TCC 数据库或改用更大能力的输入模式绕过授权。
+
+仅在另一台本机明确批准创建身份时运行 `python3 macos/create_signing_identity.py --approve-keychain-changes`。不得重建或覆盖现有身份；丢失私钥/换证书会再次改变身份。
 
 ## Git
 

@@ -79,6 +79,8 @@ _compet_add_source = _compet_bind(_compet_cf,'CFRunLoopAddSource',None,[_compet_
 _compet_run_loop = _compet_bind(_compet_cf,'CFRunLoopRun',None,[])
 _compet_default_mode = _compet_ptr.in_dll(_compet_cf,'kCFRunLoopDefaultMode').value
 _compet_listen_allowed = _compet_bind(_compet_cg,'CGPreflightListenEventAccess',_compet_ct.c_bool,[])
+_compet_request_listen = _compet_bind(_compet_cg,'CGRequestListenEventAccess',_compet_ct.c_bool,[])
+_compet_permission_requested = False
 _compet_ax = _compet_ct.CDLL('/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices')
 _compet_ax_trusted = _compet_bind(_compet_ax,'AXIsProcessTrusted',_compet_ct.c_bool,[])
 _compet_native_state = {'created':False, 'error':None}
@@ -132,6 +134,20 @@ def _compet_native_worker():
     _compet_add_source(_compet_current_loop(),source,_compet_default_mode)
     _compet_enable_tap(_compet_native_tap, True)
     _compet_run_loop()
+def _compet_request_input_permission():
+    """Ask macOS once per launch; never approve consent or repeatedly prompt."""
+    global _compet_permission_requested
+    if _compet_listen_allowed():
+        _compet_ensure_native_input()
+        return True
+    if _compet_permission_requested:
+        return False
+    _compet_permission_requested = True
+    granted = bool(_compet_request_listen())
+    if granted:
+        _compet_ensure_native_input()
+    return granted
+
 def _compet_ensure_native_input():
     if not _compet_listen_allowed():
         return
@@ -144,6 +160,7 @@ def _compet_ensure_native_input():
         _compet_enable_tap(_compet_native_tap, True)
 def _compet_start_native_input():
     _compet_ensure_native_input()
+    _compet_QTimer.singleShot(0, _compet_request_input_permission)
     if not hasattr(_compet_engine, '_compet_permission_timer'):
         from PyQt6.QtWidgets import QApplication
         timer = _compet_QTimer(QApplication.instance())
@@ -261,3 +278,47 @@ def _compet_apply_window(widget):
                 window.setIgnoresMouseEvents_(False)
         except Exception as exc:
             _compet_window_status['timer_mouse_error'] = repr(exc)
+
+# Native consent request and a visible settings entry; approval stays with the user.
+from PyQt6.QtCore import QUrl as _compet_QUrl
+from PyQt6.QtGui import QDesktopServices as _compet_DesktopServices
+from PyQt6.QtWidgets import QHBoxLayout as _compet_Row, QLabel as _compet_Label, QPushButton as _compet_Button
+from core.i18n import I18n as _compet_I18n, TRANSLATIONS as _compet_translations
+from ui.settings.main_window import MainSettingWindow as _compet_SettingsWindow
+_compet_permission_text = {
+    'zh_CN': ('键鼠互动：权限已开启', '键鼠互动：需开启输入监控', '申请权限', '打开系统设置', '权限设置'),
+    'zh_TW': ('鍵鼠互動：權限已開啟', '鍵鼠互動：需開啟輸入監控', '申請權限', '開啟系統設定', '權限設定'),
+    'en': ('Keyboard/mouse interaction: enabled', 'Input Monitoring permission is needed', 'Request access', 'Open System Settings', 'Permission settings'),
+    'ja': ('キー・マウス反応：許可済み', '入力監視の許可が必要です', '許可を求める', 'システム設定を開く', '権限設定'),
+    'ko': ('키보드/마우스 반응: 허용됨', '입력 모니터링 권한이 필요합니다', '권한 요청', '시스템 설정 열기', '권한 설정'),
+}
+def _compet_permission_action():
+    if not _compet_listen_allowed() and not _compet_permission_requested:
+        _compet_request_input_permission()
+    else:
+        _compet_DesktopServices.openUrl(_compet_QUrl('x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'))
+
+def _compet_refresh_permission_row(self):
+    texts = _compet_permission_text.get(_compet_I18n.get_lang(), _compet_permission_text['en'])
+    allowed = _compet_listen_allowed()
+    self._compet_permission_label.setText(texts[0] if allowed else texts[1])
+    self._compet_permission_button.setText(texts[4] if allowed else texts[3] if _compet_permission_requested else texts[2])
+
+_compet_settings_init_before_permissions = _compet_SettingsWindow.__init__
+def _compet_settings_init_with_permissions(self, *args, **kwargs):
+    _compet_settings_init_before_permissions(self, *args, **kwargs)
+    row = _compet_Row()
+    self._compet_permission_label = _compet_Label()
+    self._compet_permission_label.setWordWrap(True)
+    self._compet_permission_button = _compet_Button()
+    self._compet_permission_button.clicked.connect(_compet_permission_action)
+    row.addWidget(self._compet_permission_label, 1)
+    row.addWidget(self._compet_permission_button)
+    self.tabs.parentWidget().layout().insertLayout(1, row)
+    self._compet_permission_status_timer = _compet_QTimer(self)
+    self._compet_permission_status_timer.timeout.connect(self._compet_refresh_permission_row)
+    self._compet_permission_status_timer.start(1000)
+    _compet_I18n.language_changed.connect(self._compet_refresh_permission_row)
+    self._compet_refresh_permission_row()
+_compet_SettingsWindow._compet_refresh_permission_row = _compet_refresh_permission_row
+_compet_SettingsWindow.__init__ = _compet_settings_init_with_permissions

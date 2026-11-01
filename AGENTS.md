@@ -7,3 +7,5 @@
 - Do not commit applications, archives, user settings, skins copied from Application Support, timer records, logs, tokens, or credentials.
 - Validate source syntax with `python3 -m compileall -q morningmeal_Compet_V3 macos`; use `python3 macos/check_installed.py` to compare the local installed hook and signature, run `python3 -m unittest discover -s macos/tests -p 'test_*.py' -v` for docking regressions, and run `git diff --check`.
 - Fullscreen/window/permission behavior requires real macOS GUI verification. An offscreen smoke test does not prove those behaviors.
+
+- Local production updates must use `macos/sign_app.py` with the existing dedicated identity receipt. Do not replace it with ad-hoc signing or regenerate the key. Identity creation and code-signing trust changes require explicit user approval; private keys never enter Git or CI.

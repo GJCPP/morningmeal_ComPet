@@ -1,4 +1,7 @@
-"""Run inside a repaired app's Qt/Python runtime; no real input events are posted."""
+"""Run in a repaired Qt runtime with permission APIs mocked to denied.
+
+The harness must intercept configuration writes; no real input is posted.
+"""
 
 def run():
     import json
@@ -109,6 +112,8 @@ def run():
         assert settings.tab_timer.sub_tabs.tabText(0) == I18n.tr('subtab_timer_list')
         assert settings.tab_timer.sub_tabs.tabText(1) == I18n.tr('subtab_window_groups')
         assert settings.title_bar.theme_btn.text() == '深色'
+        assert '输入监控' in settings._compet_permission_label.text()
+        assert settings._compet_permission_button.text() == '申请权限'
         dialog = ConfirmDialog(I18n.tr('del_group'), "'probe' 그룹을 삭제하시겠습니까?", is_danger=True)
         created.append(dialog)
         assert {button.text() for button in dialog.findChildren(QPushButton)} == {'取消','确认'}
@@ -118,6 +123,7 @@ def run():
         assert {button.text() for button in normal.findChildren(QPushButton)} == {'取消','确定'}
         I18n.set_language('en')
         assert settings.title_bar.theme_btn.text() == 'Dark'
+        assert 'Input Monitoring' in settings._compet_permission_label.text()
         I18n.set_language('zh_CN')
         assert settings.title_bar.theme_btn.text() == '深色'
         passed.append('Chinese initial tabs, confirmation buttons, group deletion, and live theme label translation')

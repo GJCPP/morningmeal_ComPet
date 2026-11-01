@@ -28,3 +28,10 @@ Desktop.ini
 *.zip
 *.marshal
 macos/artifacts/
+
+# Local signing keys must never be committed
+*.p12
+*.pfx
+*.key
+*.pem
+*.keychain-db

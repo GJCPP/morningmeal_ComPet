@@ -31,6 +31,10 @@ def main():
     if sha256(original_main) != baseline['original_main_sha256']:
         parser.error('Saved original main differs from the captured installed baseline.')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(args.app)], check=True)
+    identity = baseline.get('signing_certificate_sha1')
+    if identity:
+        requirement = f'=identifier "Compet-V3" and certificate leaf = H"{identity}"'
+        subprocess.run(['codesign', '--verify', '--test-requirement', requirement, str(args.app)], check=True)
     print('PASS: repository patch matches installed hook; original main matches baseline; signature is valid.')
 
 if __name__ == '__main__':
