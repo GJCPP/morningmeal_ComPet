@@ -23,6 +23,11 @@ def main():
         parser.error('Expected a locally repaired bundle containing its hook and saved original main.')
     if sha256(SOURCE) != sha256(hook):
         parser.error('Installed compatibility hook differs from repository source.')
+    for source_name, bundle_name in [('docking.py', 'compet_docking.py'), ('interaction_fixes.py', 'compet_interaction_fixes.py')]:
+        source = ROOT / 'morningmeal_Compet_V3/core' / source_name
+        installed = args.app / 'Contents/Resources' / bundle_name
+        if not installed.is_file() or sha256(source) != sha256(installed):
+            parser.error(f'Installed {bundle_name} differs from repository source.')
     if sha256(original_main) != baseline['original_main_sha256']:
         parser.error('Saved original main differs from the captured installed baseline.')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(args.app)], check=True)

@@ -5,13 +5,14 @@
 ## 代码和已安装应用的对应关系
 
 - `morningmeal_Compet_V3/core/macos_compat.py`：与当前 `/Applications/Compet-V3.app/Contents/Resources/compet_macos_compat.py` **逐字节一致**的兼容层。暂时保留累积补丁结构，方便核对已验证行为。
+- `morningmeal_Compet_V3/core/interaction_fixes.py` 和 `core/docking.py`：整卡拖动、双向吸附、邻近计时器边缘吸附和补充翻译；原位更新时分别放在应用 Resources 的 `compet_interaction_fixes.py` / `compet_docking.py`。
 - `morningmeal_Compet_V3/main.py`：在 Cocoa GUI 启动路径中、绑定输入引擎及窗口类之前加载兼容层；Windows 和已有的 offscreen/minimal 启动路径不加载它。
 - `.github/workflows/release.yml`：macOS ZIP 使用 `zip -ry`，保留 framework 和 PyInstaller 包中的符号链接，并执行完整签名验证。
 - `macos/installed-baseline.json`：源码基线、已安装 hook 和原 main 字节码的 SHA-256。它是核对记录，不含配置、皮肤、计时数据、权限数据库或凭据。
 - `macos/check_installed.py`：只读核对当前安装的补丁和签名。
 - `macos/REPAIR-NOTES.md`：历史应用包修复、权限和回归验证说明。
 
-当前应用是此前原位修复的发布包，**不是从本分支重新构建的产物**。上游 main 已包含较新的功能；此分支源码入口和打包设置尚未做完整依赖安装与重建验收。不要把当前应用的手工验证结果当作新构建的验收结果。
+当前应用是原位更新兼容层和交互补丁的发布包，**不是从本分支重新构建的产物**。上游 main 已包含较新的功能；此分支源码入口和打包设置尚未做完整依赖安装与重建验收。不要把当前应用的手工验证结果当作新构建的验收结果。
 
 ## 已保存的修复
 
@@ -20,6 +21,8 @@
 3. 用 macOS 原生 **listen-only** 事件通道驱动桌宠互动，必须由用户授予“输入监控”；不屏蔽、修改或记录按键和鼠标内容。
 4. 桌宠和计时器采用非激活浮动面板，辅助应用模式、跨 Space 属性以及空间切换通知配合使用，支持跟随其他应用的全屏空间。
 5. 每帧清空桌宠透明画布，禁用 Cocoa 缓存阴影，避免残影。
+6. 计时器标题、时间和背景均可拖动；拖动计时器到桌宠底部或把桌宠放到计时器上方都可吸附。绑定后拖动任一窗口可联动；右键桌宠解除绑定。关闭磁吸开关后不再自动绑定。检测使用桌宠底部锚点，支持大尺寸皮肤。
+7. 修复初始设置子标签、确认/取消按钮、主题按钮及删除分组提示的漏译，并保留语言切换。
 
 辅助应用模式下 Dock 图标隐藏，设置仍通过菜单栏进入。
 
@@ -29,6 +32,7 @@
 
 ```sh
 python3 macos/check_installed.py
+python3 -m unittest discover -s macos/tests -p 'test_*.py' -v
 ```
 
 修改兼容层时先提交到本分支，在输出副本中完成构建/验收，再替换正式应用。不要仅为了同步源码而反复修改或签名当前应用。
@@ -41,5 +45,5 @@ python3 macos/check_installed.py
 
 - `upstream` 指向原项目。
 - 修复分支：`codex/macos-local-fixes`。
-- 如完成 GitHub fork，`origin` 指向个人 fork；本地提交不会自动推送。
+- `origin` 已关联个人 fork：`git@github.com:GJCPP/morningmeal_ComPet.git`；本地提交不会自动推送。
 - 不提交 `.app`、ZIP、用户配置、皮肤、计时数据、日志、虚拟环境或密钥。

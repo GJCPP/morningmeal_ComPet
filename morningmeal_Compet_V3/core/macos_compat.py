@@ -228,3 +228,36 @@ def _compet_refresh_overlays(notification):
     for widget in _compet_GuiApplication.topLevelWidgets():
         if isinstance(widget, (_compet_pet_module.PetWidget, _compet_timer_module.TimerWidget)) and widget.isVisible():
             _compet_apply_window(widget)
+
+# Newly maintained source modules are embedded as sidecars when updating old bundles.
+import importlib as _compet_importlib
+import importlib.util as _compet_import_util
+import os as _compet_os
+import sys as _compet_sys
+def _compet_load_local_module(name, filename):
+    try:
+        return _compet_importlib.import_module(name)
+    except ModuleNotFoundError as exc:
+        if exc.name != name:
+            raise
+        path = _compet_os.path.join(_compet_os.path.dirname(_compet_sys.executable), '..', 'Resources', filename)
+        spec = _compet_import_util.spec_from_file_location(name, path)
+        module = _compet_import_util.module_from_spec(spec)
+        _compet_sys.modules[name] = module
+        spec.loader.exec_module(module)
+        return module
+_compet_load_local_module('core.docking', 'compet_docking.py')
+_compet_load_local_module('core.interaction_fixes', 'compet_interaction_fixes.py').install()
+
+# A clicked timer must accept the first mouse interaction even as a floating panel.
+_compet_before_timer_mouse_window = _compet_apply_window
+def _compet_apply_window(widget):
+    _compet_before_timer_mouse_window(widget)
+    if isinstance(widget, _compet_timer_module.TimerWidget):
+        try:
+            window = _compet_objc.objc_object(c_void_p=int(widget.winId())).window()
+            if window is not None:
+                window.setBecomesKeyOnlyIfNeeded_(False)
+                window.setIgnoresMouseEvents_(False)
+        except Exception as exc:
+            _compet_window_status['timer_mouse_error'] = repr(exc)

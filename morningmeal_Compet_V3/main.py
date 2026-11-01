@@ -22,6 +22,9 @@ from PyQt6.QtCore import Qt
 if sys.platform == 'darwin' and os.environ.get('QT_QPA_PLATFORM', '').lower() not in ('offscreen', 'minimal'):
     import core.macos_compat
 
+from core.interaction_fixes import install as _install_interaction_fixes
+_install_interaction_fixes()
+
 from core.config_manager import config_mgr, CRASH_LOG_PATH, BUNDLE_DIR
 from core.i18n import I18n
 from core.input_engine import start_input_engine, input_bridge
