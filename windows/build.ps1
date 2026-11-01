@@ -1,4 +1,6 @@
 # Build and publish the local app to one fixed location.
+param([switch]$StageOnly)
+
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This build script requires Windows.' }
 
@@ -29,17 +31,18 @@ if (-not (Test-Path -LiteralPath $python)) {
 }
 
 # Do not interrupt a running app or replace DLLs that it has loaded.
-function Assert-AppStopped {
+function Assert-AppStopped([string[]]$Directories = @($liveDir, $previousDir, $stagedDir)) {
     foreach ($process in @(Get-Process -Name 'Compet-V3' -ErrorAction SilentlyContinue)) {
         $runningPath = $process.Path
-        foreach ($dir in @($liveDir, $previousDir, $stagedDir)) {
+        foreach ($dir in $Directories) {
             if ($runningPath -and $runningPath.StartsWith($dir + '\', [StringComparison]::OrdinalIgnoreCase)) {
                 throw "ComPet is running from $dir. Exit it from its tray menu, then rebuild."
             }
         }
     }
 }
-Assert-AppStopped
+if ($StageOnly) { Assert-AppStopped -Directories @($stagedDir) }
+else { Assert-AppStopped }
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
@@ -69,6 +72,11 @@ finally {
 
 & $python (Join-Path $PSScriptRoot 'smoke.py') $stagedExe
 if ($LASTEXITCODE -ne 0) { throw 'Startup check failed; the current app has not been replaced.' }
+if ($StageOnly) {
+    Write-Host "Staged and verified: $stagedExe"
+    Write-Host 'The current app and desktop shortcut have not been changed.'
+    return
+}
 
 # Recheck in case the app was opened while PyInstaller was working.
 Assert-AppStopped

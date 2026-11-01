@@ -68,7 +68,12 @@ class TimerCardWidget(QFrame):
         self.idle_spin.setValue(self.timer_data.get("idle_timeout", 5))
         self.idle_spin.setSuffix(f" {I18n.tr('unit_seconds')}")
         self.idle_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.idle_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        # Qt 6.12 + stylesheet + NoButtons collapses the editor to 1px.
+        # Keep native step buttons and remove nested QLineEdit padding.
+        self.idle_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.UpDownArrows)
+        self.idle_spin.lineEdit().setStyleSheet(
+            "border: none; border-radius: 0; padding: 0; background: transparent;"
+        )
         self.idle_spin.valueChanged.connect(self.on_idle_changed)
         idle_layout.addWidget(self.lbl_i)
         idle_layout.addWidget(self.idle_spin, 1)

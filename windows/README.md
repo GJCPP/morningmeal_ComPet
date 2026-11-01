@@ -16,6 +16,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\build.ps1
 
 用户配置及计时数据仍由应用保存到 `%USERPROFILE%\.morningmeal_ComPet`，构建与启动检查不迁移或覆盖这些数据。不要移动仓库目录；如需迁移，在新位置重新运行脚本更新快捷方式。
 
+如果正式程序仍在运行，可先准备并检查构建，等用户正常退出后再运行上面的更新命令：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\build.ps1 -StageOnly
+```
+
+`-StageOnly` 使用固定暂存目录，不更新正式程序或桌面快捷方式，也不停止正式进程。
+
 ## 首次安装依赖
 
 需要 Git 和 uv。已有 `.venv` 及依赖时无需重复安装。

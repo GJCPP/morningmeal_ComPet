@@ -88,5 +88,63 @@ class TimerSettingsEditingTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+    def test_idle_text_has_visible_space_at_display_scales(self):
+        probe = textwrap.dedent("""
+            import os
+            from unittest.mock import patch
+            from PyQt6.QtWidgets import QApplication, QStyle, QStyleOptionFrame
+            app = QApplication([])
+            with patch('os.path.expanduser', return_value=os.environ['COMPET_TEST_PROFILE']):
+                from core.config_manager import config_mgr
+            from core.i18n import I18n
+            I18n.set_language('en')
+            from core.interaction_fixes import install
+            install()
+            from core.timer_fixes import install as install_timer
+            install_timer()
+            from ui.settings.main_window import MainSettingWindow
+            window = MainSettingWindow()
+            window.show()
+            app.processEvents()
+            for dark in (False, True):
+                window.is_dark = dark
+                config_mgr.config['settings']['dark_mode'] = dark
+                window.apply_theme()
+                app.processEvents()
+                spin = next(iter(window.tab_timer.card_map.values())).idle_spin
+                editor = spin.lineEdit()
+                option = QStyleOptionFrame()
+                option.initFrom(editor)
+                option.rect = editor.rect()
+                contents = editor.style().subElementRect(QStyle.SubElement.SE_LineEditContents, option, editor)
+                required_width = editor.fontMetrics().horizontalAdvance(spin.text()) + 6
+                assert contents.width() >= required_width, (dark, contents.getRect(), required_width)
+                assert contents.height() >= editor.fontMetrics().height(), (dark, contents.getRect())
+                # Verify real painted glyphs, not just an internally stored value.
+                editor.clearFocus()
+                app.processEvents()
+                painted = editor.grab().toImage()
+                original = editor.text()
+                editor.setText('')
+                app.processEvents()
+                blank = editor.grab().toImage()
+                differences = sum(painted.pixel(x, y) != blank.pixel(x, y)
+                    for y in range(min(painted.height(), blank.height()))
+                    for x in range(min(painted.width(), blank.width())))
+                assert differences >= 12, ('No visible numeric text', dark, differences)
+                editor.setText(original)
+            window.close()
+        """)
+        for scale in ('1', '1.5', '2'):
+            with self.subTest(scale=scale), tempfile.TemporaryDirectory(prefix='compet-idle-paint-') as profile:
+                env = os.environ.copy()
+                env.update(USERPROFILE=profile, COMPET_TEST_PROFILE=profile,
+                           QT_QPA_PLATFORM='offscreen', QT_SCALE_FACTOR=scale, PYTHONUTF8='1')
+                env['PYTHONPATH'] = str(ROOT / 'morningmeal_Compet_V3')
+                result = subprocess.run([sys.executable, '-X', 'utf8', '-c', probe],
+                    cwd=ROOT, env=env, capture_output=True, text=True, encoding='utf-8', timeout=20)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()
