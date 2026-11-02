@@ -1,11 +1,11 @@
 # ui/settings/tab_timer.py
 import uuid
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea,
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QSizePolicy,
     QPushButton, QLabel, QLineEdit, QCheckBox, QComboBox, QFrame,
-    QTabWidget
+    QTabWidget, QStyle
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from ui.numeric_editor import SettingsSpinBox
 from core.config_manager import config_mgr
 from core.i18n import I18n
@@ -20,140 +20,173 @@ from ui.components import (
 class TimerCardWidget(QFrame):
     changed = pyqtSignal()
     order_requested = pyqtSignal(str, int)
-    name_updated = pyqtSignal(str, str)  # (timer_id, new_name) -> 경량 실시간 이름 반영
+    expanded_changed = pyqtSignal(str, bool)
+    name_updated = pyqtSignal(str, str)
 
     def __init__(self, timer_data, remove_callback, parent=None):
         super().__init__(parent)
         self.timer_data = timer_data
         self.remove_callback = remove_callback
-        self.setFixedWidth(260)
+        self._position = 1
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
         self.update_card_style()
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(8)
+        header = QHBoxLayout()
+        header.setSpacing(6)
+        self.position_label = QLabel()
+        header.addWidget(self.position_label)
+        self.expand_btn = QPushButton()
+        self.expand_btn.setCheckable(True)
+        self.expand_btn.setMinimumWidth(0)
+        self.expand_btn.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self.expand_btn.setStyleSheet('text-align: left; padding: 5px 6px;')
+        self.expand_btn.toggled.connect(self.on_expanded_toggled)
+        header.addWidget(self.expand_btn, 1)
+        self.time_label = QLabel(format_time(self.timer_data.get('elapsed_seconds', 0)))
+        self.time_label.setStyleSheet('font-weight: bold; font-family: monospace; font-size: 16px; color: #2563EB;')
+        header.addWidget(self.time_label)
+        self.move_up_btn = QPushButton()
+        self.move_up_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowUp))
+        self.move_down_btn = QPushButton()
+        self.move_down_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowDown))
+        for button, direction in ((self.move_up_btn, -1), (self.move_down_btn, 1)):
+            button.setFixedSize(28, 28)
+            button.setStyleSheet('padding: 0;')
+            button.clicked.connect(lambda checked=False, step=direction: self.order_requested.emit(self.timer_data['id'], step))
+            header.addWidget(button)
+        layout.addLayout(header)
 
-        # 상단 이름 & 삭제 버튼
-        top_layout = QHBoxLayout()
-        self.name_edit = QLineEdit(self.timer_data.get("name", I18n.tr("default_timer_name")))
+        self.details = QWidget()
+        details_layout = QVBoxLayout(self.details)
+        details_layout.setContentsMargins(0, 2, 0, 2)
+        details_layout.setSpacing(8)
+        name_layout = QHBoxLayout()
+        self.name_label = QLabel()
+        name_layout.addWidget(self.name_label)
+        self.name_edit = QLineEdit(self.timer_data.get('name', I18n.tr('default_timer_name')))
+        self.name_edit.setMinimumWidth(0)
         self.name_edit.setFixedHeight(28)
-        
-        # 키 입력 중에는 가볍게 이름만 실시간 갱신, 입력 완료 시 저장 및 전체 동기화
         self.name_edit.textChanged.connect(self.on_name_text_changed)
         self.name_edit.editingFinished.connect(self.on_name_editing_finished)
-        top_layout.addWidget(self.name_edit, 1)
+        name_layout.addWidget(self.name_edit, 1)
+        self.del_btn = QPushButton()
+        self.del_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton))
+        self.del_btn.setFixedSize(28, 28)
+        self.del_btn.setStyleSheet('padding: 0; color: #EF4444;')
+        self.del_btn.clicked.connect(lambda: self.remove_callback(self.timer_data))
+        name_layout.addWidget(self.del_btn)
+        details_layout.addLayout(name_layout)
 
-        del_btn = QPushButton("✕")
-        del_btn.setFixedSize(24, 24)
-        del_btn.setStyleSheet("QPushButton { border: none; background: transparent; font-size: 11px; color: #94A3B8; } QPushButton:hover { color: #EF4444; }")
-        del_btn.clicked.connect(lambda: self.remove_callback(self.timer_data))
-        top_layout.addWidget(del_btn)
-        layout.addLayout(top_layout)
-
-        self._position = 1
-        order_layout = QHBoxLayout()
-        self.position_label = QLabel(I18n.tr("timer_order").format(position=self._position))
-        order_layout.addWidget(self.position_label)
-        order_layout.addStretch()
-        self.move_up_btn = QPushButton("↑ " + I18n.tr("move_up"))
-        self.move_down_btn = QPushButton("↓ " + I18n.tr("move_down"))
-        for button, direction in ((self.move_up_btn, -1), (self.move_down_btn, 1)):
-            button.setFixedHeight(24)
-            button.clicked.connect(lambda checked=False, step=direction: self.order_requested.emit(self.timer_data['id'], step))
-            order_layout.addWidget(button)
-        layout.addLayout(order_layout)
-
-        # 그룹 배정
         group_layout = QHBoxLayout()
-        self.lbl_g = QLabel(I18n.tr("fallback_label" if self.timer_data.get("is_fallback") else "group_label"))
-        self.lbl_g.setStyleSheet("color: #64748B; font-size: 11px;")
+        self.lbl_g = QLabel()
         self.group_combo = QComboBox()
+        self.group_combo.setMinimumWidth(0)
+        self.group_combo.setMinimumContentsLength(1)
+        self.group_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.group_combo.setFixedHeight(28)
         self.refresh_groups()
         self.group_combo.currentTextChanged.connect(self.on_group_changed)
         group_layout.addWidget(self.lbl_g)
         group_layout.addWidget(self.group_combo, 1)
-        layout.addLayout(group_layout)
-        self.fallback_hint = QLabel(I18n.tr("fallback_hint"))
+        details_layout.addLayout(group_layout)
+        self.fallback_hint = QLabel()
         self.fallback_hint.setWordWrap(True)
-        self.fallback_hint.setVisible(bool(self.timer_data.get("is_fallback", False)))
-        layout.addWidget(self.fallback_hint)
+        self.fallback_hint.setMinimumWidth(0)
+        self.fallback_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.fallback_hint.setVisible(bool(self.timer_data.get('is_fallback', False)))
+        details_layout.addWidget(self.fallback_hint)
 
-        # 유휴 시간 설정
         idle_layout = QHBoxLayout()
-        self.lbl_i = QLabel(I18n.tr("idle_label"))
-        self.lbl_i.setStyleSheet("color: #64748B; font-size: 11px;")
+        self.lbl_i = QLabel()
         self.idle_spin = SettingsSpinBox()
         self.idle_spin.setRange(1, 999)
-        self.idle_spin.setValue(self.timer_data.get("idle_timeout", 5))
-        self.idle_spin.setSuffix(f" {I18n.tr('unit_seconds')}")
+        self.idle_spin.setValue(self.timer_data.get('idle_timeout', 5))
         self.idle_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.idle_spin.valueChanged.connect(self.on_idle_changed)
         idle_layout.addWidget(self.lbl_i)
         idle_layout.addWidget(self.idle_spin, 1)
-        layout.addLayout(idle_layout)
-
-        # 시간 표시 및 리셋
-        time_layout = QHBoxLayout()
-        self.time_label = QLabel(format_time(self.timer_data.get("elapsed_seconds", 0)))
-        self.time_label.setStyleSheet("font-weight: bold; font-family: monospace; font-size: 16px; color: #2563EB;")
-        time_layout.addWidget(self.time_label)
-        time_layout.addStretch()
-
-        self.btn_reset = QPushButton(I18n.tr("reset"))
-        self.btn_reset.setFixedHeight(26)
+        self.btn_reset = QPushButton()
+        self.btn_reset.setFixedHeight(28)
         self.btn_reset.clicked.connect(self.reset_time)
-        time_layout.addWidget(self.btn_reset)
-        layout.addLayout(time_layout)
-
+        idle_layout.addWidget(self.btn_reset)
+        details_layout.addLayout(idle_layout)
+        layout.addWidget(self.details)
+        self.details.hide()
+        self.retranslate_ui()
         I18n.language_changed.connect(self.retranslate_ui)
+
+    def set_expanded(self, expanded):
+        self.expand_btn.setChecked(expanded)
+
+    def on_expanded_toggled(self, expanded):
+        self.details.setVisible(expanded)
+        self.update_summary()
+        self.expanded_changed.emit(self.timer_data['id'], expanded)
+
+    def update_summary(self):
+        name = self.timer_data.get('name', I18n.tr('default_timer_name'))
+        arrow = QStyle.StandardPixmap.SP_ArrowDown if self.expand_btn.isChecked() else QStyle.StandardPixmap.SP_ArrowRight
+        self.expand_btn.setIcon(self.style().standardIcon(arrow))
+        available = max(0, self.expand_btn.width() - self.expand_btn.iconSize().width() - 20)
+        self.expand_btn.setText(self.expand_btn.fontMetrics().elidedText(
+            name, Qt.TextElideMode.ElideRight, available))
+        key = 'collapse_timer_details' if self.expand_btn.isChecked() else 'edit_timer_details'
+        description = I18n.tr(key).format(name=name)
+        self.expand_btn.setToolTip(description)
+        self.expand_btn.setAccessibleName(description)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_summary()
 
     def set_order_position(self, index, count):
         self._position = index + 1
-        self.position_label.setText(I18n.tr("timer_order").format(position=self._position))
+        self.position_label.setText(I18n.tr('timer_order').format(position=self._position))
         self.move_up_btn.setEnabled(index > 0)
         self.move_down_btn.setEnabled(index < count - 1)
 
     def update_time_display(self, seconds: int):
-        """실시간 틱 전달받아 라벨 갱신"""
-        self.timer_data["elapsed_seconds"] = seconds
+        self.timer_data['elapsed_seconds'] = seconds
         self.time_label.setText(format_time(seconds))
 
     def refresh_groups(self):
         self.group_combo.blockSignals(True)
         self.group_combo.clear()
-        if self.timer_data.get("is_fallback", False):
+        if self.timer_data.get('is_fallback', False):
             self.group_combo.setEnabled(False)
-            self.group_combo.addItem(I18n.tr("fallback_scope"))
-            self.group_combo.blockSignals(False)
-            return
-        groups = list(config_mgr.config.get("groups", {}).keys())
-        if groups:
-            self.group_combo.setEnabled(True)
-            self.group_combo.addItems(groups)
-            cur = self.timer_data.get("group", "")
-            if cur in groups:
-                self.group_combo.setCurrentText(cur)
-            else:
-                self.timer_data["group"] = groups[0]
-                self.group_combo.setCurrentText(groups[0])
+            self.group_combo.addItem(I18n.tr('fallback_scope'))
         else:
-            self.group_combo.setEnabled(False)
-            self.group_combo.addItem(I18n.tr("no_group_available"))
-            self.timer_data["group"] = ""
+            groups = list(config_mgr.config.get('groups', {}).keys())
+            self.group_combo.setEnabled(bool(groups))
+            self.group_combo.addItems(groups or [I18n.tr('no_group_available')])
+            current = self.timer_data.get('group', '')
+            if current not in groups:
+                current = groups[0] if groups else ''
+                self.timer_data['group'] = current
+            if groups:
+                self.group_combo.setCurrentText(current)
         self.group_combo.blockSignals(False)
 
     def retranslate_ui(self):
-        self.position_label.setText(I18n.tr("timer_order").format(position=self._position))
-        self.move_up_btn.setText("↑ " + I18n.tr("move_up"))
-        self.move_down_btn.setText("↓ " + I18n.tr("move_down"))
-        self.lbl_g.setText(I18n.tr("fallback_label" if self.timer_data.get("is_fallback") else "group_label"))
-        self.fallback_hint.setText(I18n.tr("fallback_hint"))
-        if self.timer_data.get("is_fallback"):
+        self.position_label.setText(I18n.tr('timer_order').format(position=self._position))
+        for button, key in ((self.move_up_btn, 'move_up'), (self.move_down_btn, 'move_down'), (self.del_btn, 'del_timer_title')):
+            button.setToolTip(I18n.tr(key))
+            button.setAccessibleName(I18n.tr(key))
+        self.name_label.setText(I18n.tr('timer_name'))
+        self.name_edit.setAccessibleName(I18n.tr('timer_name'))
+        self.lbl_g.setText(I18n.tr('fallback_label' if self.timer_data.get('is_fallback') else 'group_label'))
+        self.fallback_hint.setText(I18n.tr('fallback_hint'))
+        if self.timer_data.get('is_fallback'):
             self.refresh_groups()
-        self.lbl_i.setText(I18n.tr("idle_label"))
+        self.lbl_i.setText(I18n.tr('idle_label'))
         self.idle_spin.setSuffix(f" {I18n.tr('unit_seconds')}")
-        self.btn_reset.setText(I18n.tr("reset"))
+        self.idle_spin.setAccessibleName(I18n.tr('idle_label'))
+        self.btn_reset.setText(I18n.tr('reset'))
+        self.update_summary()
 
     def update_card_style(self):
         is_dark = config_mgr.config.get("settings", {}).get("dark_mode", False)
@@ -172,6 +205,7 @@ class TimerCardWidget(QFrame):
     def on_name_text_changed(self, txt):
         """타이핑 중: 데이터 업데이트 및 바탕화면 위젯 라벨 즉시 변경"""
         self.timer_data["name"] = txt
+        self.update_summary()
         self.name_updated.emit(self.timer_data.get("id"), txt)
 
     def on_name_editing_finished(self):
@@ -357,6 +391,8 @@ class TabTimerSettings(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.card_map = {}  # {timer_id: TimerCardWidget}
+        timers = config_mgr.config.get('timers', [])
+        self._expanded_timer_id = timers[0]['id'] if timers else None
         self.init_ui()
         
         # 엔진의 실시간 초 틱 시그널 연결 (설정 화면 초 연동)
@@ -400,15 +436,17 @@ class TabTimerSettings(QWidget):
         actions.addWidget(self.btn_reset_all)
         layout_timers.addLayout(actions)
 
-        scroll_t = QScrollArea()
-        scroll_t.setWidgetResizable(True)
+        self.timer_scroll = QScrollArea()
+        self.timer_scroll.setWidgetResizable(True)
+        self.timer_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         t_content = QWidget()
-        self.timer_grid = QGridLayout(t_content)
-        self.timer_grid.setContentsMargins(4, 4, 4, 4)
-        self.timer_grid.setSpacing(10)
-        self.timer_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        scroll_t.setWidget(t_content)
-        layout_timers.addWidget(scroll_t)
+        t_content.setMinimumWidth(0)
+        self.timer_list_layout = QVBoxLayout(t_content)
+        self.timer_list_layout.setContentsMargins(4, 4, 4, 4)
+        self.timer_list_layout.setSpacing(8)
+        self.timer_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.timer_scroll.setWidget(t_content)
+        layout_timers.addWidget(self.timer_scroll)
 
         # 2. 창 그룹 관리 탭
         self.sub_page_groups = QWidget()
@@ -497,6 +535,7 @@ class TabTimerSettings(QWidget):
             "x": 200, "y": 300,
             "paused": False
         }
+        self._expanded_timer_id = new_t["id"]
         config_mgr.config.setdefault("timers", []).append(new_t)
         config_mgr.save_config()
         self.refresh_timer_list()
@@ -546,22 +585,60 @@ class TabTimerSettings(QWidget):
         self.refresh_timer_list()
         self.settings_changed.emit()
 
-    def refresh_timer_list(self):
-        self.btn_add_fallback.setEnabled(not has_fallback_timer(config_mgr.config))
-        self.btn_reset_all.setEnabled(bool(config_mgr.config.get("timers", [])))
-        self.card_map.clear()
-        while self.timer_grid.count():
-            item = self.timer_grid.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
+    def on_card_expanded(self, timer_id, expanded):
+        if expanded:
+            self._expanded_timer_id = timer_id
+            for other_id, card in self.card_map.items():
+                if other_id != timer_id:
+                    card.set_expanded(False)
+            QTimer.singleShot(0, lambda: self.ensure_timer_visible(timer_id))
+        elif self._expanded_timer_id == timer_id:
+            self._expanded_timer_id = None
 
-        for idx, t in enumerate(config_mgr.config.get("timers", [])):
-            card = TimerCardWidget(t, self.remove_timer)
-            card.set_order_position(idx, len(config_mgr.config.get("timers", [])))
-            card.order_requested.connect(self.move_timer)
-            card.changed.connect(self.settings_changed.emit)
-            card.name_updated.connect(self.timer_name_changed.emit)
-            self.card_map[t.get("id")] = card
-            self.timer_grid.addWidget(card, idx // 2, idx % 2)
+    def ensure_timer_visible(self, timer_id):
+        card = self.card_map.get(timer_id)
+        if card is not None and card.expand_btn.isChecked():
+            self.timer_scroll.ensureWidgetVisible(card, 0, 8)
+
+    def refresh_timer_list(self):
+        timers = config_mgr.config.get('timers', [])
+        self.btn_add_fallback.setEnabled(not has_fallback_timer(config_mgr.config))
+        self.btn_reset_all.setEnabled(bool(timers))
+        alive = {timer['id'] for timer in timers}
+        for timer_id in list(self.card_map):
+            if timer_id not in alive:
+                card = self.card_map.pop(timer_id)
+                self.timer_list_layout.removeWidget(card)
+                card.hide()
+                card.deleteLater()
+        if self._expanded_timer_id not in alive:
+            self._expanded_timer_id = None
+
+        # Move existing rows in place: rebuilding destroys editor focus and state.
+        for index, timer in enumerate(timers):
+            timer_id = timer['id']
+            card = self.card_map.get(timer_id)
+            if card is None:
+                card = TimerCardWidget(timer, self.remove_timer)
+                card.order_requested.connect(self.move_timer)
+                card.expanded_changed.connect(self.on_card_expanded)
+                card.changed.connect(self.settings_changed.emit)
+                card.name_updated.connect(self.timer_name_changed.emit)
+                self.card_map[timer_id] = card
+            else:
+                card.timer_data = timer
+                card.refresh_groups()
+                card.update_time_display(timer.get('elapsed_seconds', 0))
+                if not card.name_edit.hasFocus() and card.name_edit.text() != timer.get('name', ''):
+                    card.name_edit.blockSignals(True)
+                    card.name_edit.setText(timer.get('name', ''))
+                    card.name_edit.blockSignals(False)
+                card.update_summary()
+            card.set_order_position(index, len(timers))
+            if self.timer_list_layout.indexOf(card) != index:
+                self.timer_list_layout.removeWidget(card)
+                self.timer_list_layout.insertWidget(index, card)
+            card.set_expanded(timer_id == self._expanded_timer_id)
 
     def refresh_group_list(self):
         while self.group_list_layout.count():

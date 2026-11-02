@@ -4,6 +4,9 @@ from PyQt6.QtCore import QLocale, QObject, pyqtSignal
 TRANSLATIONS = {
     # ----------------------------- 1. 한국어 (ko) -----------------------------
     "ko": {
+        "timer_name": "이름:",
+        "edit_timer_details": "{name} 설정 편집",
+        "collapse_timer_details": "{name} 설정 접기",
         "timer_order": "순서 {position}",
         "move_up": "위로",
         "move_down": "아래로",
@@ -128,6 +131,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 2. 영어 (en) -----------------------------
     "en": {
+        "timer_name": "Name:",
+        "edit_timer_details": "Edit {name} settings",
+        "collapse_timer_details": "Collapse {name} settings",
         "timer_order": "Order {position}",
         "move_up": "Up",
         "move_down": "Down",
@@ -248,6 +254,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 3. 일본어 (ja) -----------------------------
     "ja": {
+        "timer_name": "名前:",
+        "edit_timer_details": "{name}の設定を編集",
+        "collapse_timer_details": "{name}の設定を閉じる",
         "timer_order": "順序 {position}",
         "move_up": "上へ",
         "move_down": "下へ",
@@ -368,6 +377,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 4. 중국어 간체 (zh_CN) -----------------------------
     "zh_CN": {
+        "timer_name": "名称：",
+        "edit_timer_details": "编辑「{name}」的设置",
+        "collapse_timer_details": "收起「{name}」的设置",
         "timer_order": "顺序 {position}",
         "move_up": "上移",
         "move_down": "下移",
@@ -488,6 +500,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 5. 중국어 번체 (zh_TW) -----------------------------
     "zh_TW": {
+        "timer_name": "名稱：",
+        "edit_timer_details": "編輯「{name}」的設定",
+        "collapse_timer_details": "收起「{name}」的設定",
         "timer_order": "順序 {position}",
         "move_up": "上移",
         "move_down": "下移",
