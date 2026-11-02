@@ -13,7 +13,7 @@ from core.activity_engine import activity_engine
 from core.timer_policy import has_fallback_timer
 from ui.timer_statistics import show_timer_statistics
 from ui.components import (
-    ConfirmDialog, AlertDialog, capture_bridge, 
+    ConfirmDialog, capture_bridge,
     start_window_click_capture, cancel_window_click_capture, format_time
 )
 
@@ -235,6 +235,8 @@ class TimerCardWidget(QFrame):
 
 
 class GroupCardWidget(QFrame):
+    rename_requested = pyqtSignal(str, str)
+
     def __init__(self, group_name, windows, remove_group_callback, parent=None):
         super().__init__(parent)
         self.group_name = group_name
@@ -248,10 +250,13 @@ class GroupCardWidget(QFrame):
         layout.setSpacing(10)
 
         header = QHBoxLayout()
-        self.title_label = QLabel(self.group_name)
-        self.title_label.setStyleSheet("font-weight: 600; font-size: 13px;")
-        header.addWidget(self.title_label)
-        header.addStretch()
+        self.name_edit = QLineEdit(self.group_name)
+        self.name_edit.setMinimumWidth(0)
+        self.name_edit.setFixedHeight(28)
+        self.name_edit.setStyleSheet('font-weight: 600;')
+        self.name_edit.editingFinished.connect(
+            lambda: self.rename_requested.emit(self.group_name, self.name_edit.text()))
+        header.addWidget(self.name_edit, 1)
 
         self.del_btn = QPushButton(I18n.tr("del_group"))
         self.del_btn.setFixedHeight(24)
@@ -259,6 +264,12 @@ class GroupCardWidget(QFrame):
         self.del_btn.clicked.connect(lambda: self.remove_group_callback(self.group_name))
         header.addWidget(self.del_btn)
         layout.addLayout(header)
+        self.name_error_label = QLabel()
+        self.name_error_label.setWordWrap(True)
+        self.name_error_label.setStyleSheet('color: #EF4444;')
+        self.name_error_label.hide()
+        layout.addWidget(self.name_error_label)
+        self.name_edit.textEdited.connect(lambda: self.name_error_label.hide())
 
         self.slot_labels = []
         self.slot_edits = []
@@ -274,6 +285,13 @@ class GroupCardWidget(QFrame):
         layout.addWidget(self.add_window_btn)
 
         capture_bridge.window_captured.connect(self.on_window_captured)
+        self.retranslate_ui()
+
+    def show_name_error(self, key):
+        self.name_edit.setText(self.group_name)
+        self.name_error_label.setProperty('translationKey', key)
+        self.name_error_label.setText(I18n.tr(key))
+        self.name_error_label.show()
 
     def append_slot(self, value=""):
         i = len(self.slot_edits)
@@ -313,6 +331,11 @@ class GroupCardWidget(QFrame):
         self.slot_edits[-1].setFocus()
 
     def retranslate_ui(self):
+        self.name_edit.setAccessibleName(I18n.tr('group_name'))
+        self.name_edit.setToolTip(I18n.tr('rename_group_hint'))
+        error_key = self.name_error_label.property('translationKey')
+        if error_key:
+            self.name_error_label.setText(I18n.tr(error_key))
         self.del_btn.setText(I18n.tr("del_group"))
         self.add_window_btn.setText(I18n.tr("add_tracked_window"))
         for i, lbl in enumerate(self.slot_labels):
@@ -455,24 +478,21 @@ class TabTimerSettings(QWidget):
         layout_groups.setSpacing(10)
 
         g_header = QHBoxLayout()
-        self.new_g_edit = QLineEdit()
-        self.new_g_edit.setPlaceholderText(I18n.tr("new_group_placeholder"))
-        self.new_g_edit.returnPressed.connect(self.create_group)
         self.btn_create_g = QPushButton(I18n.tr("create_group"))
         self.btn_create_g.clicked.connect(self.create_group)
-        g_header.addWidget(self.new_g_edit, 1)
+        g_header.addStretch()
         g_header.addWidget(self.btn_create_g)
         layout_groups.addLayout(g_header)
 
-        scroll_g = QScrollArea()
-        scroll_g.setWidgetResizable(True)
+        self.group_scroll = QScrollArea()
+        self.group_scroll.setWidgetResizable(True)
         g_content = QWidget()
         self.group_list_layout = QVBoxLayout(g_content)
         self.group_list_layout.setContentsMargins(4, 4, 4, 4)
         self.group_list_layout.setSpacing(10)
         self.group_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        scroll_g.setWidget(g_content)
-        layout_groups.addWidget(scroll_g)
+        self.group_scroll.setWidget(g_content)
+        layout_groups.addWidget(self.group_scroll)
 
         self.sub_tabs.addTab(self.sub_page_timers, "타이머 목록")
         self.sub_tabs.addTab(self.sub_page_groups, "창 매칭 그룹")
@@ -555,20 +575,57 @@ class TabTimerSettings(QWidget):
             self.settings_changed.emit()
 
     def create_group(self):
-        name = self.new_g_edit.text().strip()
-        groups = config_mgr.config.setdefault("groups", {})
-        if not name:
-            idx = 1
-            while f"{I18n.tr('default_group_name')} {idx}" in groups: idx += 1
-            name = f"{I18n.tr('default_group_name')} {idx}"
-        elif name in groups:
-            AlertDialog(I18n.tr("error"), I18n.tr("group_exists_warn"), self).exec()
-            return
-
-        groups[name] = ["", "", ""]
+        groups = config_mgr.config.setdefault('groups', {})
+        index = 1
+        while f"{I18n.tr('default_group_name')} {index}" in groups:
+            index += 1
+        name = f"{I18n.tr('default_group_name')} {index}"
+        groups[name] = ['', '', '']
         config_mgr.save_config()
-        self.new_g_edit.clear()
         self.refresh_group_list()
+        self.refresh_timer_list()
+        self.settings_changed.emit()
+        QTimer.singleShot(0, lambda: self.focus_group_name(name))
+
+    def focus_group_name(self, name):
+        for index in range(self.group_list_layout.count()):
+            card = self.group_list_layout.itemAt(index).widget()
+            if card.group_name == name:
+                self.group_scroll.ensureWidgetVisible(card, 0, 8)
+                card.name_edit.setFocus()
+                card.name_edit.selectAll()
+                break
+
+    def rename_group(self, old_name, new_name):
+        groups = config_mgr.config.get('groups', {})
+        if old_name not in groups:
+            return
+        card = next((self.group_list_layout.itemAt(index).widget()
+                     for index in range(self.group_list_layout.count())
+                     if self.group_list_layout.itemAt(index).widget().group_name == old_name), None)
+        if card is None:
+            return
+        new_name = new_name.strip()
+        if not new_name:
+            card.show_name_error('group_name_empty')
+            return
+        if new_name != old_name and new_name in groups:
+            card.show_name_error('group_exists_warn')
+            return
+        card.name_edit.setText(new_name)
+        card.name_error_label.hide()
+        if new_name == old_name:
+            return
+        # Rename in place without moving groups, rebuilding editors or losing capture state.
+        renamed = {new_name if name == old_name else name: windows
+                   for name, windows in groups.items()}
+        groups.clear()
+        groups.update(renamed)
+        card.group_name = new_name
+        for timer in config_mgr.config.get('timers', []):
+            if timer.get('group') == old_name:
+                timer['group'] = new_name
+        config_mgr.save_config()
         self.refresh_timer_list()
         self.settings_changed.emit()
 
@@ -641,12 +698,23 @@ class TabTimerSettings(QWidget):
             card.set_expanded(timer_id == self._expanded_timer_id)
 
     def refresh_group_list(self):
-        while self.group_list_layout.count():
-            item = self.group_list_layout.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
-        for g_name, wins in config_mgr.config.get("groups", {}).items():
-            card = GroupCardWidget(g_name, wins, self.remove_group)
-            self.group_list_layout.addWidget(card)
+        groups = config_mgr.config.get('groups', {})
+        existing = {self.group_list_layout.itemAt(index).widget().group_name:
+                    self.group_list_layout.itemAt(index).widget()
+                    for index in range(self.group_list_layout.count())}
+        for name, card in existing.items():
+            if name not in groups:
+                self.group_list_layout.removeWidget(card)
+                card.hide()
+                card.deleteLater()
+        for index, (name, windows) in enumerate(groups.items()):
+            card = existing.get(name)
+            if card is None:
+                card = GroupCardWidget(name, windows, self.remove_group)
+                card.rename_requested.connect(self.rename_group)
+            if self.group_list_layout.indexOf(card) != index:
+                self.group_list_layout.removeWidget(card)
+                self.group_list_layout.insertWidget(index, card)
 
     def retranslate_ui(self):
         self.sub_tabs.setTabText(0, I18n.tr("subtab_timer_list"))
@@ -657,7 +725,6 @@ class TabTimerSettings(QWidget):
         self.btn_add_fallback.setText(I18n.tr("add_other_timer"))
         self.btn_statistics.setText(I18n.tr("time_distribution"))
         self.btn_reset_all.setText(I18n.tr("reset_all_timers"))
-        self.new_g_edit.setPlaceholderText(I18n.tr("new_group_placeholder"))
         self.btn_create_g.setText(I18n.tr("create_group"))
 
         for card in self.card_map.values():

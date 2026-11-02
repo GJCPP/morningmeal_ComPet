@@ -4,6 +4,9 @@ from PyQt6.QtCore import QLocale, QObject, pyqtSignal
 TRANSLATIONS = {
     # ----------------------------- 1. 한국어 (ko) -----------------------------
     "ko": {
+        "group_name": "그룹 이름",
+        "rename_group_hint": "Enter를 누르거나 다른 곳을 클릭하면 이름을 저장합니다.",
+        "group_name_empty": "그룹 이름을 입력하세요.",
         "timer_name": "이름:",
         "edit_timer_details": "{name} 설정 편집",
         "collapse_timer_details": "{name} 설정 접기",
@@ -131,6 +134,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 2. 영어 (en) -----------------------------
     "en": {
+        "group_name": "Group name",
+        "rename_group_hint": "Press Enter or click elsewhere to save the name.",
+        "group_name_empty": "Group name cannot be empty.",
         "timer_name": "Name:",
         "edit_timer_details": "Edit {name} settings",
         "collapse_timer_details": "Collapse {name} settings",
@@ -254,6 +260,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 3. 일본어 (ja) -----------------------------
     "ja": {
+        "group_name": "グループ名",
+        "rename_group_hint": "Enter または別の場所をクリックすると名前を保存します。",
+        "group_name_empty": "グループ名を入力してください。",
         "timer_name": "名前:",
         "edit_timer_details": "{name}の設定を編集",
         "collapse_timer_details": "{name}の設定を閉じる",
@@ -377,6 +386,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 4. 중국어 간체 (zh_CN) -----------------------------
     "zh_CN": {
+        "group_name": "分组名称",
+        "rename_group_hint": "按 Enter 或点击其他位置保存名称。",
+        "group_name_empty": "分组名称不能为空。",
         "timer_name": "名称：",
         "edit_timer_details": "编辑「{name}」的设置",
         "collapse_timer_details": "收起「{name}」的设置",
@@ -500,6 +512,9 @@ TRANSLATIONS = {
 
     # ----------------------------- 5. 중국어 번체 (zh_TW) -----------------------------
     "zh_TW": {
+        "group_name": "群組名稱",
+        "rename_group_hint": "按 Enter 或點擊其他位置儲存名稱。",
+        "group_name_empty": "群組名稱不能為空。",
         "timer_name": "名稱：",
         "edit_timer_details": "編輯「{name}」的設定",
         "collapse_timer_details": "收起「{name}」的設定",
