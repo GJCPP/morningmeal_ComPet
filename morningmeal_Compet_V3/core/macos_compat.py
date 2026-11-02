@@ -35,6 +35,8 @@ def _compet_apply_window(widget):
             return
         behavior = int(window.collectionBehavior())
         behavior &= ~((1 << 1) | (1 << 7) | (1 << 9) | (1 << 16) | (1 << 17))
+        behavior &= ~int(_compet_AppKit.NSWindowCollectionBehaviorParticipatesInCycle)
+        behavior |= int(_compet_AppKit.NSWindowCollectionBehaviorIgnoresCycle)
         behavior |= (1 << 0) | (1 << 8) | (1 << 18)
         window.setCollectionBehavior_(behavior)
         window.setStyleMask_(int(window.styleMask()) | (1 << 7))
@@ -188,7 +190,9 @@ _compet_pet_module.PetWidget.paintEvent = _compet_clear_and_paint
 _compet_gui_init_original = _compet_GuiApplication.__init__
 def _compet_gui_init(self, *args, **kwargs):
     _compet_gui_init_original(self, *args, **kwargs)
-    _compet_AppKit.NSApplication.sharedApplication().setActivationPolicy_(1)
+    # Accessory apps are absent from both the Dock and Command-Tab.
+    _compet_AppKit.NSApplication.sharedApplication().setActivationPolicy_(
+        _compet_AppKit.NSApplicationActivationPolicyAccessory)
     from core.macos_focus import install as install_focus_guard
     install_focus_guard(self)
 _compet_GuiApplication.__init__ = _compet_gui_init

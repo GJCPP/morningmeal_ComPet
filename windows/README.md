@@ -75,3 +75,7 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 脚本只保留一份上一构建，位于 `morningmeal_Compet_V3\build\windows-previous`。如果需要恢复，退出应用后，在资源管理器中将当前 `dist\Compet-V3` 文件夹移至其他位置，再将 `build\windows-previous` 整个文件夹移到 `dist` 并命名为 `Compet-V3`；桌面快捷方式无需更改。源码、用户设置和计时数据不受此恢复操作影响。
 
 离屏检查确认启动和资源初始化，完整桌面交互仍需实际操作验证。
+
+## 桌面浮窗与任务切换
+
+桌宠和桌面计时器始终从任务栏及 Alt+Tab 隐藏，包括旧配置中的 `tray_mode: false`。设置窗口仍可正常参与窗口切换；从托盘或桌宠右键菜单打开设置。该行为无需修改用户配置。

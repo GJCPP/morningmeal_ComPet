@@ -32,9 +32,10 @@ class TimerWidget(QWidget):
 
     def update_window_flags(self):
         """플로팅 타이머 위젯의 창 속성 설정"""
-        flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
-        if config_mgr.config.get("settings", {}).get("tray_mode", False):
-            flags |= Qt.WindowType.Tool
+        # Desktop overlays must stay out of taskbars and window switchers,
+        # including legacy profiles that have tray_mode disabled.
+        flags = (Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+                 | Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowFlags(flags)
 
     def init_ui(self):

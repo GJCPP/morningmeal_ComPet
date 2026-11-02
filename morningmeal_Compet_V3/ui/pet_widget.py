@@ -58,9 +58,10 @@ class PetWidget(QWidget):
                     break
 
     def update_window_flags(self):
-        flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
-        if config_mgr.config.get("settings", {}).get("tray_mode", False):
-            flags |= Qt.WindowType.Tool
+        # Desktop overlays must stay out of taskbars and window switchers,
+        # including legacy profiles that have tray_mode disabled.
+        flags = (Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+                 | Qt.WindowType.WindowStaysOnTopHint)
         if config_mgr.config.get("settings", {}).get("click_through", False):
             flags |= Qt.WindowType.WindowTransparentForInput
         self.setWindowFlags(flags)

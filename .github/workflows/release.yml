@@ -104,6 +104,7 @@ jobs:
             $ICON_ARG \
             main.py
           cd dist
+          /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "Compet-V3.app/Contents/Info.plist"
           codesign --force --deep --sign - "Compet-V3.app"
           zip -ry "${{ github.workspace }}/Compet-V3-macOS.zip" Compet-V3.app
 

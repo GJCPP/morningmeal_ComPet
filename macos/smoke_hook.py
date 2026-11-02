@@ -30,6 +30,8 @@ if os.environ.get('COMPET_BUILD_SMOKE') == '1':
             result = {'pets':len(pets),'timers':len(timers),'visible_timers':sum(w.isVisible() for w in timers)}
             if os.environ.get('QT_QPA_PLATFORM', '').lower() not in ('offscreen','minimal'):
                 import objc
+                import AppKit
+                result['activation_policy'] = int(AppKit.NSApplication.sharedApplication().activationPolicy())
                 result['native'] = []
                 for w in pets + [w for w in timers if w.isVisible()]:
                     window = objc.objc_object(c_void_p=int(w.winId())).window()

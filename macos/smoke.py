@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import plistlib
 from pathlib import Path
 import subprocess
 import tempfile
@@ -14,6 +15,8 @@ def main():
     parser.add_argument('--native',action='store_true')
     parser.add_argument('--duration',type=int,default=2500)
     args = parser.parse_args()
+    info = plistlib.loads((args.app / 'Contents/Info.plist').read_bytes())
+    assert info.get('LSUIElement') is True, 'Bundle must be hidden from Dock and Command-Tab'
     with tempfile.TemporaryDirectory(prefix='compet-smoke-', dir='/private/tmp') as directory:
         profile = Path(directory)
         env = os.environ.copy()
@@ -31,6 +34,8 @@ def main():
         result = json.loads((profile/'result.json').read_text())
         assert result['pets'] == 1 and result['timers'] >= 1 and result['visible_timers'] == 1, result
         if args.native:
+            assert result['activation_policy'] == 1, result  # NSApplicationActivationPolicyAccessory
+            assert all(w['behavior'] & (1 << 6) and not w['behavior'] & (1 << 5) for w in result['native']), result
             assert len(result['native']) == 2 and result['quit_guard'], result
             assert all(not w['can_become_key'] for w in result['native']), result
             assert all(w['visible'] and w['active_space'] and w['behavior'] & 1 and w['behavior'] & (1<<8) and w['level'] >= 3 for w in result['native']), result
