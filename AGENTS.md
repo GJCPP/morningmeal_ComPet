@@ -25,3 +25,10 @@
 - All matching ordinary timers accrue independently, with their own pause/idle checks. Only the first matching timer in configuration/list order is displayed.
 - A timer with `is_fallback: true` covers only foreground tasks unmatched by every ordinary timer. Paused or idle ordinary matches must not be redirected into it. Missing/failed foreground reads and the app's own UI do not accrue fallback time.
 - A fallback timer's existence enables global pet keyboard/mouse response, even if paused. Its name is editable and does not determine its role. This must not bypass input-monitoring permissions or alter timer accounting.
+
+## macOS source builds
+
+- Use `.venv/bin/python macos/build.py` for full local rebuilds; it validates and installs at `/Applications/Compet-V3.app`. Use `--build-only` for isolated staging.
+- Preserve the fixed install path and `com.gjcpp.compet.login` LaunchAgent. Login startup must open that path through LaunchServices, without `-n` or KeepAlive. Never point startup at a temporary or versioned build.
+- `macos/install.py` refuses replacement while ComPet is running. Ask for a menu quit only when needed; never force-stop the real app to install.
+- Smoke tests use disposable profiles, disable input listeners/permission requests, and never copy live settings. Source-build identity and file hashes are checked via `macos/check_installed.py`.

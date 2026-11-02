@@ -17,25 +17,37 @@ def main():
     parser.add_argument('--app', type=Path, default=Path('/Applications/Compet-V3.app'))
     args = parser.parse_args()
     baseline = json.loads((ROOT / 'macos/installed-baseline.json').read_text())
-    hook = args.app / 'Contents/Resources/compet_macos_compat.py'
-    original_main = args.app / 'Contents/Resources/compet_original_main.marshal'
-    if not hook.is_file() or not original_main.is_file():
-        parser.error('Expected a locally repaired bundle containing its hook and saved original main.')
-    if sha256(SOURCE) != sha256(hook):
-        parser.error('Installed compatibility hook differs from repository source.')
-    for source_name, bundle_name in [('docking.py', 'compet_docking.py'), ('interaction_fixes.py', 'compet_interaction_fixes.py'), ('timer_policy.py', 'compet_timer_policy.py'), ('timer_fixes.py', 'compet_timer_fixes.py'), ('macos_foreground.py', 'compet_macos_foreground.py')]:
-        source = ROOT / 'morningmeal_Compet_V3/core' / source_name
-        installed = args.app / 'Contents/Resources' / bundle_name
-        if not installed.is_file() or sha256(source) != sha256(installed):
-            parser.error(f'Installed {bundle_name} differs from repository source.')
-    if sha256(original_main) != baseline['original_main_sha256']:
-        parser.error('Saved original main differs from the captured installed baseline.')
+    manifest_path = args.app / 'Contents/Resources/compet-build.json'
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text())
+        sources = manifest.get('sources', {})
+        expected = {str(p.relative_to(ROOT)) for p in (ROOT / 'morningmeal_Compet_V3').rglob('*.py')}
+        if manifest.get('kind') != 'source-build' or set(sources) != expected:
+            parser.error('Source-build manifest is incomplete.')
+        for name, digest in sources.items():
+            if sha256(ROOT / name) != digest:
+                parser.error(f'Installed build differs from source: {name}')
+        print(f'Source build matches repository files (base {manifest["revision"][:7]}).')
+    else:
+        hook = args.app / 'Contents/Resources/compet_macos_compat.py'
+        original_main = args.app / 'Contents/Resources/compet_original_main.marshal'
+        if not hook.is_file() or not original_main.is_file():
+            parser.error('Expected a locally repaired bundle containing its hook and saved original main.')
+        if sha256(SOURCE) != sha256(hook):
+            parser.error('Installed compatibility hook differs from repository source.')
+        for source_name, bundle_name in [('docking.py', 'compet_docking.py'), ('interaction_fixes.py', 'compet_interaction_fixes.py'), ('timer_policy.py', 'compet_timer_policy.py'), ('timer_fixes.py', 'compet_timer_fixes.py'), ('macos_foreground.py', 'compet_macos_foreground.py')]:
+            source = ROOT / 'morningmeal_Compet_V3/core' / source_name
+            installed = args.app / 'Contents/Resources' / bundle_name
+            if not installed.is_file() or sha256(source) != sha256(installed):
+                parser.error(f'Installed {bundle_name} differs from repository source.')
+        if sha256(original_main) != baseline['original_main_sha256']:
+            parser.error('Saved original main differs from the captured installed baseline.')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(args.app)], check=True)
     identity = baseline.get('signing_certificate_sha1')
     if identity:
         requirement = f'=identifier "Compet-V3" and certificate leaf = H"{identity}"'
         subprocess.run(['codesign', '--verify', '--test-requirement', requirement, str(args.app)], check=True)
-    print('PASS: repository patch matches installed hook; original main matches baseline; signature is valid.')
+    print('PASS: installed code matches repository source; fixed signature is valid.')
 
 if __name__ == '__main__':
     main()

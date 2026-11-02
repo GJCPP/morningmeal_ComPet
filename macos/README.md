@@ -12,7 +12,7 @@
 - `macos/check_installed.py`：只读核对当前安装的补丁和签名。
 - `macos/REPAIR-NOTES.md`：历史应用包修复、权限和回归验证说明。
 
-当前应用是原位更新兼容层和交互补丁的发布包，**不是从本分支重新构建的产物**。上游 main 已包含较新的功能；此分支源码入口和打包设置尚未做完整依赖安装与重建验收。不要把当前应用的手工验证结果当作新构建的验收结果。
+当前 `/Applications/Compet-V3.app` 已改为完整源码构建，含远端 `72151a3` 的新增功能，沿用固定本地签名。`Contents/Resources/compet-build.json` 记录完整 Python 源文件哈希及构建基线；`check_installed.py` 同时支持此格式和历史原位补丁格式。上面的 sidecar 与原 main 字节码说明仅适用于历史修复包，新构建直接使用打包后的 core 模块。
 
 ## 已保存的修复
 
@@ -31,8 +31,8 @@
 
 - 每 200ms 独立检查前台应用；闲置只影响累计，不阻止识别和卡片切换。
 - macOS 前台应用使用 NSWorkspace 识别。窗口标题可通过限时 Accessibility 查询补充；标题权限不足时仍能按应用名识别，不使用易失败的 AppleScript 窗口 id，也不申请屏幕录制。
-- QQ / 微信按应用身份及别名识别；应用名的匹配优先于聊天窗口标题中的关键词，避免 QQ 窗口标题出现 ChatGPT 时误归到工作。
-- 同一时刻只选择并累计一个计时器。前台不匹配、识别失败、手动暂停、无输入监控授权或超过闲置阈值时均不累计，并在卡片显示原因。
+- QQ / 微信按应用身份及别名识别，也支持窗口标题关键词；远端新增的重叠监听允许多个分组同时累计，显示顺序由计时器列表决定。
+- 所有匹配的普通计时器各自按暂停和闲置规则累计；按设置列表顺序显示第一个匹配的计时器。前台不匹配、识别失败、手动暂停、无输入监控授权或超过闲置阈值时均不累计，并在卡片显示原因。
 - 桌面仅显示当前匹配的卡片；没有匹配时保留最近一次。完整列表仍在设置中管理。最近卡片会保存，重启后继续使用。
 - 单个已绑定桌宠升级为“跟随当前计时器（全部）”，保留全部计时器关联，切换时在同一个宠物底部锚点替换卡片。可在桌宠设置下拉框选择全部/单个，或右键桌宠选择多个；“解除全部关联”恢复自由模式。多桌宠配置保留原有各自的绑定。
 - 计时不再另开 pynput 活动监听；使用系统空闲秒数判断闲置，以单调时钟累计实际有效间隔。睡眠/长时间阻塞的间隔不补算。
@@ -77,3 +77,21 @@ python3 macos/sign_app.py --app /path/to/prepared/Compet-V3.app
 - 修复分支：`codex/macos-local-fixes`。
 - `origin` 已关联个人 fork：`git@github.com:GJCPP/morningmeal_ComPet.git`；本地提交不会自动推送。
 - 不提交 `.app`、ZIP、用户配置、皮肤、计时数据、日志、虚拟环境或密钥。
+
+## 完整源码构建与登录启动
+
+本机环境为 Apple Silicon、Python 3.11.18、Qt 6.12.0；已验证依赖记录在 `macos/requirements-local.lock`。构建环境 `.venv` 不进入 Git。重新配置时可用 `uv venv --python 3.11 .venv`，再用 `uv pip sync --python .venv/bin/python macos/requirements-local.lock` 安装锁定版本。
+
+日常更新先从 origin 拉取，完全退出运行中的应用保存计时，再运行：
+
+```sh
+.venv/bin/python macos/build.py
+```
+
+脚本完整打包源码、沿用现有证书签名、执行隔离 offscreen/Cocoa 启动测试，然后安装到唯一正式路径 `/Applications/Compet-V3.app`。已运行的应用会阻止安装，不能强杀用户进程；退出后可运行 `.venv/bin/python macos/install.py` 发布已经验证的输出。`--build-only` 只准备测试构建，不改变正式版本。构建输出固定在 `macos/artifacts/dist/Compet-V3.app`，安装不会创建版本后缀目录或 ZIP。新构建仍需实际检查全屏和交互；测试副本不会申请输入权限，也不会读取或写入真实计时数据。
+
+登录启动通过 `.venv/bin/python macos/enable_startup.py` 配置当前用户的 `~/Library/LaunchAgents/com.gjcpp.compet.login.plist`。它在 Aqua 登录时执行 `/usr/bin/open -g /Applications/Compet-V3.app`，不使用 `-n`，避免重复实例。任务仅负责打开应用，无 KeepAlive；主动退出后不会被不断重新打开。以后每次成功构建并安装，固定路径内容更新，启动项便会打开更新后的版本，不需重新添加。开机时不会自动拉取 Git 或编译；只运行最新成功安装的构建。
+
+停用：`launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gjcpp.compet.login.plist`，再移除该 plist。权限由 macOS 管理；若系统撤销输入监控，可从应用设置中的权限入口重新授权，不修改 TCC 或重建签名身份。
+
+2026-11-02 验证：31 项 macOS 回归与 22 项更新功能测试通过；完整打包的 offscreen/Cocoa 启动通过，Finder 全屏中桌宠和计时器均处于活动空间；固定签名和源码清单校验通过。LaunchAgent 已实际加载并以退出码 0 打开正式安装版本。尚未执行真实重启测试。
