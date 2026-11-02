@@ -1,6 +1,6 @@
 # Local ComPet macOS maintenance
 
-- Preserve upstream history. Work on `codex/` branches, inspect Git status first, and commit only task files. Push only when the user explicitly requests it.
+- Preserve upstream history. Work and commit directly on local `main`, tracking the fork’s `origin/main`; do not create task branches or worktrees unless the user explicitly requests one. Inspect Git status and remote differences first, preserve uncommitted user work, and commit only task files. Push only when the user explicitly requests it; never force-push or silently overwrite conflicts.
 - `macos/README.md` explains the installed compatibility snapshot and the distinction between the repaired release app and a future source rebuild.
 - Do not modify or re-sign `/Applications/Compet-V3.app` just to synchronize this repository. Application installation is a separate task and requires GUI checks plus permission-refresh instructions.
 - Input monitoring remains listen-only and user-authorized. Never edit TCC databases or bypass missing permissions.
@@ -25,6 +25,13 @@
 - All matching ordinary timers accrue independently, with their own pause/idle checks. Only the first matching timer in configuration/list order is displayed.
 - A timer with `is_fallback: true` covers only foreground tasks unmatched by every ordinary timer. Paused or idle ordinary matches must not be redirected into it. Missing/failed foreground reads and the app's own UI do not accrue fallback time.
 - A fallback timer's existence enables global pet keyboard/mouse response, even if paused. Its name is editable and does not determine its role. This must not bypass input-monitoring permissions or alter timer accounting.
+
+## Shared local build policy
+
+- Reuse this checkout’s existing `.venv` and installed build toolchain for ordinary updates. Do not create a separate environment, checkout, or renamed build for each task. Change dependencies only when required, and update the existing environment and lockfile deliberately.
+- Rebuild into the same fixed output paths and replace the existing compiled artifacts after validation. Do not accumulate version/date/task-suffixed applications, executables, build directories, desktop shortcuts, or ZIP archives.
+- On macOS, reuse `macos/artifacts/dist/Compet-V3.app` and publish to `/Applications/Compet-V3.app`; keep the existing signing identity and login-startup path. On Windows, reuse the fixed paths documented below. Temporary test profiles/staging may be used for safe verification, then cleaned up; they must not become alternate installations.
+- Preserve user settings, skins, timer history, and layout. If the app is running, obtain a normal menu quit to save records before replacement; never force-stop it to rebuild. Do not rebuild or reinstall for documentation-only or Git-only work.
 
 ## macOS source builds
 
