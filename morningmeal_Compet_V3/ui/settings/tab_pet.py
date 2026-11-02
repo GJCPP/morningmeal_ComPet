@@ -5,13 +5,14 @@ import zipfile
 import shutil
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea,
-    QPushButton, QLabel, QLineEdit, QComboBox, QFrame, QSpinBox,
+    QPushButton, QLabel, QLineEdit, QComboBox, QFrame,
     QSlider, QGroupBox, QTableWidget, QHeaderView, QFileDialog,
-    QMessageBox, QInputDialog, QAbstractSpinBox, QCheckBox, QTabWidget
+    QMessageBox, QInputDialog, QCheckBox, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices, QPixmap, QFontMetrics
-from core.config_manager import config_mgr, SKINS_DIR
+from core.config_manager import config_mgr, SKINS_DIR, DEFAULT_SKIN
+from ui.numeric_editor import SettingsSpinBox
 from core.i18n import I18n
 from ui.components import KeyCaptureButton
 
@@ -54,7 +55,7 @@ class PetCardWidget(QFrame):
         self.skin_combo = QComboBox()
         self.skin_combo.setStyleSheet("font-size: 11px;")
         self.refresh_skins()
-        self.skin_combo.setCurrentText(self.pet_data.get("skin", "default"))
+        self.skin_combo.setCurrentText(self.pet_data.get("skin", DEFAULT_SKIN))
         self.skin_combo.currentTextChanged.connect(self.on_skin_changed)
         layout.addWidget(self.skin_combo)
 
@@ -63,12 +64,11 @@ class PetCardWidget(QFrame):
         self.lbl_size = QLabel(I18n.tr("size_label"))
         self.lbl_size.setStyleSheet("font-size: 11px; color: #64748B;")
         cur_pct = int(self.pet_data.get("scale", 1.0) * 100)
-        self.scale_spin = QSpinBox()
+        self.scale_spin = SettingsSpinBox()
         self.scale_spin.setRange(10, 150)
         self.scale_spin.setSingleStep(5)
         self.scale_spin.setValue(cur_pct)
         self.scale_spin.setSuffix("%")
-        self.scale_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.scale_spin.setStyleSheet("font-size: 11px; font-weight: bold; color: #2563EB;")
         self.scale_spin.valueChanged.connect(self.on_scale_changed)
         size_layout.addWidget(self.lbl_size)
@@ -148,7 +148,7 @@ class PetCardWidget(QFrame):
         self.changed.emit()
 
     def update_preview(self):
-        skin = self.pet_data.get("skin", "default")
+        skin = self.pet_data.get("skin", DEFAULT_SKIN)
         conf = config_mgr.get_skin_config(skin)
         idle_file = os.path.join(SKINS_DIR, skin, conf.get("idle_image", "idle.png"))
         if os.path.exists(idle_file):
@@ -170,7 +170,7 @@ class TabPetSettings(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.current_editing_skin = "default"
+        self.current_editing_skin = DEFAULT_SKIN
         self.is_loading_skin = False
         self.init_ui()
         self.load_skin_list()
@@ -493,13 +493,33 @@ class TabPetSettings(QWidget):
             self.settings_changed.emit()
 
     def refresh_pet_list(self):
-        while self.pet_grid.count():
-            item = self.pet_grid.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
-        for idx, p in enumerate(config_mgr.config.get("pets", [])):
-            card = PetCardWidget(p, self.remove_pet)
-            card.changed.connect(self.settings_changed.emit)
-            self.pet_grid.addWidget(card, idx // 3, idx % 3)
+        existing = {self.pet_grid.itemAt(i).widget().pet_data['id']:
+                    self.pet_grid.itemAt(i).widget() for i in range(self.pet_grid.count())}
+        pets = config_mgr.config.get('pets', [])
+        alive = {pet['id'] for pet in pets}
+        for pet_id, card in existing.items():
+            if pet_id not in alive:
+                self.pet_grid.removeWidget(card)
+                card.deleteLater()
+        for index, pet in enumerate(pets):
+            card = existing.get(pet['id'])
+            if card is None:
+                card = PetCardWidget(pet, self.remove_pet)
+                card.changed.connect(self.settings_changed.emit)
+            else:
+                card.pet_data = pet
+                card.refresh_timers()
+                if not (card.scale_spin.hasFocus() or card.scale_spin.lineEdit().hasFocus()):
+                    card.scale_spin.blockSignals(True)
+                    card.scale_spin.setValue(round(pet.get('scale', 1.0) * 100))
+                    card.scale_spin.blockSignals(False)
+                card.skin_combo.blockSignals(True)
+                card.refresh_skins()
+                card.skin_combo.blockSignals(True)
+                card.skin_combo.setCurrentText(pet.get('skin', DEFAULT_SKIN))
+                card.skin_combo.blockSignals(False)
+                card.update_preview()
+            self.pet_grid.addWidget(card, index // 3, index % 3)
 
     def load_skin_list(self):
         self.skin_combo.blockSignals(True)

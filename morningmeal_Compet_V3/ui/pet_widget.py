@@ -5,7 +5,7 @@ from collections import deque
 from PyQt6.QtCore import Qt, QTimer, QPoint, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QApplication, QMenu
 from PyQt6.QtGui import QPainter, QPixmap, QWheelEvent, QContextMenuEvent, QMouseEvent
-from core.config_manager import config_mgr, SKINS_DIR
+from core.config_manager import config_mgr, SKINS_DIR, DEFAULT_SKIN
 from core.i18n import I18n
 from core.activity_engine import activity_engine
 from core.timer_policy import has_fallback_timer
@@ -67,7 +67,7 @@ class PetWidget(QWidget):
         self.show()
 
     def load_resources(self):
-        skin = self.pet_data.get("skin", "default")
+        skin = self.pet_data.get("skin", DEFAULT_SKIN)
         self.display_scale = float(self.pet_data.get("scale", 1.0))
         skin_conf = config_mgr.get_skin_config(skin)
 
@@ -307,7 +307,7 @@ class PetWidget(QWidget):
 
         menu.addSeparator()
         skin_menu = menu.addMenu(I18n.tr("change_skin"))
-        cur_skin = self.pet_data.get("skin", "default")
+        cur_skin = self.pet_data.get("skin", DEFAULT_SKIN)
         if os.path.exists(SKINS_DIR):
             for s_name in sorted(os.listdir(SKINS_DIR)):
                 if os.path.isdir(os.path.join(SKINS_DIR, s_name)):

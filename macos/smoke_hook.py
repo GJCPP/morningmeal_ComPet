@@ -9,7 +9,7 @@ if os.environ.get('COMPET_BUILD_SMOKE') == '1':
     os.environ['HOME'] = str(profile)
     from core.config_manager import config_mgr
     # Keep a visible pet in the isolated default profile; no user records are copied.
-    config_mgr.config['pets'] = [{'id':'smoke-pet','skin':'default','x':300,'y':300,'scale':1}]
+    config_mgr.config['pets'] = [{'id':'smoke-pet','skin':'羿','x':300,'y':300,'scale':1}]
     if os.environ.get('QT_QPA_PLATFORM', '').lower() not in ('offscreen', 'minimal'):
         import core.macos_compat as compat
         compat._compet_listen_allowed = lambda: False

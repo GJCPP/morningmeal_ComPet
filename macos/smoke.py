@@ -34,7 +34,7 @@ def main():
             assert len(result['native']) == 2 and result['quit_guard'], result
             assert all(not w['can_become_key'] for w in result['native']), result
             assert all(w['visible'] and w['active_space'] and w['behavior'] & 1 and w['behavior'] & (1<<8) and w['level'] >= 3 for w in result['native']), result
-        assert (profile/'Library/Application Support/morningmeal_ComPet/skins/default/idle.png').exists()
+        assert (profile/'Library/Application Support/morningmeal_ComPet/skins/羿/idle.png').exists()
         print('PASS: packaged '+('Cocoa' if args.native else 'offscreen')+' startup, resources and one-card display: '+json.dumps(result))
 
 if __name__ == '__main__':

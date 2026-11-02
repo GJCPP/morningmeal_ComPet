@@ -39,10 +39,12 @@ def main():
     info['LSUIElement'] = True
     info_path.write_bytes(plistlib.dumps(info))
     paths = sorted(source.rglob('*.py'))
-    manifest = {'format': 1, 'kind': 'source-build',
+    manifest = {'format': 2, 'kind': 'source-build',
         'revision': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
         'python': sys.version.split()[0],
-        'sources': {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}}
+        'sources': {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
+        'assets': {str(p.relative_to(source/'assets')):hashlib.sha256(p.read_bytes()).hexdigest()
+                   for p in sorted((source/'assets').rglob('*')) if p.is_file()}}
     (APP/'Contents/Resources/compet-build.json').write_text(json.dumps(manifest, indent=2)+'\n')
     run(sys.executable, ROOT/'macos/sign_app.py', '--app', APP)
     run(sys.executable, ROOT/'macos/smoke.py', APP)

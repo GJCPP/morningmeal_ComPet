@@ -32,3 +32,9 @@
 - Preserve the fixed install path and `com.gjcpp.compet.login` LaunchAgent. Login startup must open that path through LaunchServices, without `-n` or KeepAlive. Never point startup at a temporary or versioned build.
 - `macos/install.py` refuses replacement while ComPet is running. Ask for a menu quit only when needed; never force-stop the real app to install.
 - Smoke tests use disposable profiles, disable input listeners/permission requests, and never copy live settings. Source-build identity and file hashes are checked via `macos/check_installed.py`.
+
+## Numeric settings and bundled default
+
+- Use `ui.numeric_editor.SettingsSpinBox` for settings integer fields. Preserve editor focus/card identity during value changes and external refreshes; do not reintroduce styled NoButtons/nested padding.
+- The user explicitly selected “羿” as the bundled default. Only those requested default assets are versioned; unrelated user skins remain private. Preserve customized skins and timer records during migration.
+- Run `tests/test_numeric_editors.py` for numeric changes, including `COMPET_QT_TEST_PLATFORM=cocoa` on macOS; use isolated profiles. Source-build asset manifests must match the packaged resources.

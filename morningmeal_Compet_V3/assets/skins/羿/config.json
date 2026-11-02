@@ -1,6 +1,7 @@
 {
-    "name": "default",
-    "squash_depth": 0.14,
+    "name": "羿",
+    "squash_depth": 0.13,
+    "enable_bounce": true,
     "idle_image": "idle.png",
     "tap_images": [
         "tap_left.png",

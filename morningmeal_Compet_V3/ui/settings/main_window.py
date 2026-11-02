@@ -50,7 +50,7 @@ class MainSettingWindow(QWidget):
         self.tab_sound = TabSoundSettings()
 
         self.tab_timer.settings_changed.connect(self.on_timer_settings_changed)
-        self.tab_pet.settings_changed.connect(self.on_child_settings_changed)
+        self.tab_pet.settings_changed.connect(self.on_pet_settings_changed)
 
         self.tabs.addTab(self.tab_timer, I18n.tr("tab_timer"))
         self.tabs.addTab(self.tab_pet, I18n.tr("tab_pet"))
@@ -97,9 +97,9 @@ class MainSettingWindow(QWidget):
         self.tab_pet.refresh_pet_list()
         self.settings_updated.emit()
 
-    def on_child_settings_changed(self):
-        self.tab_timer.refresh_timer_list()
-        self.on_timer_settings_changed()
+    def on_pet_settings_changed(self):
+        # The pet tab owns its card lifecycle. Do not destroy an active editor.
+        self.settings_updated.emit()
 
     def toggle_theme(self):
         self.is_dark = not self.is_dark

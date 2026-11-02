@@ -33,7 +33,7 @@ def main():
                     raise RuntimeError(crash.read_text(encoding='utf-8'))
                 if code is not None or 'Traceback' in log:
                     raise RuntimeError(f'App failed startup (exit={code}): {log}')
-                if not (data / 'skins/default/idle.png').is_file():
+                if not (data / 'skins/羿/idle.png').is_file():
                     raise RuntimeError(f'Default resources were not initialized: {log}')
                 print('Packaged startup and default resources: passed')
             finally:

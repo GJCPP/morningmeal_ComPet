@@ -40,7 +40,7 @@ def run():
         config_mgr.save_config = lambda: saves.append(True)
         config_mgr.save_skin_config = lambda *args, **kwargs: None
         timer_data = dict(id='probe-timer', name='probe', group='probe', elapsed_seconds=0, paused=False, x=900, y=900)
-        pet_data = dict(id='probe-pet', skin='default', bound_timer_id='', x=100, y=100, scale=1)
+        pet_data = dict(id='probe-pet', skin='羿', bound_timer_id='', x=100, y=100, scale=1)
         config_mgr.config['timers'] = [timer_data]
         config_mgr.config['pets'] = [pet_data]
 

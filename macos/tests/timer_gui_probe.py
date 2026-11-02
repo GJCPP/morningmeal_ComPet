@@ -22,7 +22,7 @@ def run():
             'groups':{'work':['ChatGPT','Logseq'],'social':['QQ','微信']},
             'timers':[dict(id='work',name='Work',group='work',idle_timeout=60,elapsed_seconds=100,x=300,y=312),
                       dict(id='social',name='Social',group='social',idle_timeout=60,elapsed_seconds=20,x=300,y=312)],
-            'pets':[dict(id='pet',skin='default',bound_timer_id='social',x=100,y=100,scale=1)]}
+            'pets':[dict(id='pet',skin='羿',bound_timer_id='social',x=100,y=100,scale=1)]}
         migrate_preferences(config_mgr.config)
         controller.session=TimerSession('social')
         controller.foreground=lambda:front[0]

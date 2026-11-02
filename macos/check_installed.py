@@ -27,6 +27,17 @@ def main():
         for name, digest in sources.items():
             if sha256(ROOT / name) != digest:
                 parser.error(f'Installed build differs from source: {name}')
+        if manifest.get('format', 1) >= 2:
+            asset_root = ROOT / 'morningmeal_Compet_V3/assets'
+            assets = manifest.get('assets', {})
+            expected_assets = {str(p.relative_to(asset_root)) for p in asset_root.rglob('*') if p.is_file()}
+            installed_root = args.app / 'Contents/Resources/assets'
+            installed_assets = {str(p.relative_to(installed_root)) for p in installed_root.rglob('*') if p.is_file()}
+            if set(assets) != expected_assets or installed_assets != expected_assets:
+                parser.error('Source-build asset manifest is incomplete or contains obsolete resources.')
+            for name, digest in assets.items():
+                if sha256(asset_root / name) != digest or sha256(installed_root / name) != digest:
+                    parser.error(f'Installed asset differs from source: {name}')
         print(f'Source build matches repository files (base {manifest["revision"][:7]}).')
     else:
         hook = args.app / 'Contents/Resources/compet_macos_compat.py'
