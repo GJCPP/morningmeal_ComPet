@@ -33,7 +33,8 @@ if os.environ.get('COMPET_BUILD_SMOKE') == '1':
                 result['native'] = []
                 for w in pets + [w for w in timers if w.isVisible()]:
                     window = objc.objc_object(c_void_p=int(w.winId())).window()
-                    result['native'].append({'behavior':int(window.collectionBehavior()),'level':int(window.level()),'visible':bool(window.isVisible()),'active_space':bool(window.isOnActiveSpace())})
+                    result['native'].append({'behavior':int(window.collectionBehavior()),'level':int(window.level()),'visible':bool(window.isVisible()),'active_space':bool(window.isOnActiveSpace()),'can_become_key':bool(window.canBecomeKeyWindow())})
+                result['quit_guard'] = hasattr(self, '_compet_quit_shortcut_guard')
             (profile/'result.json').write_text(json.dumps(result))
             self.quit()
         QTimer.singleShot(int(os.environ.get('COMPET_SMOKE_DURATION_MS','2500')),finish)

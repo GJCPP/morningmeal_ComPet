@@ -18,7 +18,7 @@ def run(*args, **kwargs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-only',action='store_true',help='Validate staging without publishing it.')
-    args = parser.parse_args()
+    options = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     source = ROOT / 'morningmeal_Compet_V3'
     from PIL import Image
@@ -48,7 +48,7 @@ def main():
     run(sys.executable, ROOT/'macos/smoke.py', APP)
     run(sys.executable, ROOT/'macos/smoke.py', APP, '--native')
     print(f'Prepared and verified: {APP}')
-    if not args.build_only:
+    if not options.build_only:
         run(sys.executable, ROOT/'macos/install.py')
 
 if __name__ == '__main__':

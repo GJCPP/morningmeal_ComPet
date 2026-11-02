@@ -95,3 +95,13 @@ python3 macos/sign_app.py --app /path/to/prepared/Compet-V3.app
 停用：`launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gjcpp.compet.login.plist`，再移除该 plist。权限由 macOS 管理；若系统撤销输入监控，可从应用设置中的权限入口重新授权，不修改 TCC 或重建签名身份。
 
 2026-11-02 验证：31 项 macOS 回归与 22 项更新功能测试通过；完整打包的 offscreen/Cocoa 启动通过，Finder 全屏中桌宠和计时器均处于活动空间；固定签名和源码清单校验通过。LaunchAgent 已实际加载并以退出码 0 打开正式安装版本。尚未执行真实重启测试。
+
+## macOS 浮窗焦点与退出保护
+
+桌宠和计时卡在创建原生窗口之前设置 `WindowDoesNotAcceptFocus`、`WA_ShowWithoutActivating` 和 `NoFocus`，保留鼠标点击/拖动能力。计时卡不再强制请求成为键盘窗口。主动打开设置或快捷设置对话框时仍可正常编辑文本。
+
+`core/macos_focus.py` 在 QApplication 创建后安装保护：Qt 标准 Quit 快捷键事件会被消费；AppKit 本应用的 local event monitor 消费精确的 ⌘Q；原生菜单保留退出动作但去掉对应快捷键。没有新增全局拦截器，也不记录按键。其他应用的 ⌘Q、⌘⇧Q、系统注销/关机请求和应用明确调用 quit 均不被这层保护拦截。用户仍可从菜单栏、桌宠右键或设置中的退出按钮退出。
+
+验证包含原生本地事件分支、Qt 快捷键分支、菜单退出动作保留、明确退出成功及原生窗口 `canBecomeKeyWindow == false`。不能用拦截所有 Quit 事件或覆盖所有 applicationShouldTerminate 请求替代快捷键保护，否则可能阻止系统正常注销/关机。
+
+退出保护在 aboutToQuit 阶段先移除 Qt 事件过滤器，再停止菜单检查和移除 AppKit 本地监视器，避免 SIP/Qt 收尾期间调用残留过滤器。2026-11-02：54 项回归通过，Cocoa 拖动/吸附回归通过；用户确认拖动、右键和设置内 ⌘Q 保护均正常。收尾修正连续三次原生打包启动/退出通过，正式应用已安装重启。

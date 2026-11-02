@@ -27,11 +27,12 @@ def main():
             env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=args.duration/1000+30)
         crash = profile/'Library/Application Support/morningmeal_ComPet/crash_log.txt'
         if process.returncode or crash.exists() or not (profile/'result.json').exists():
-            raise RuntimeError((crash.read_text() if crash.exists() else '')+process.stdout)
+            raise RuntimeError(f'Packaged smoke failed (exit={process.returncode}, result={(profile / "result.json").exists()}):\n'+(crash.read_text() if crash.exists() else '')+process.stdout)
         result = json.loads((profile/'result.json').read_text())
         assert result['pets'] == 1 and result['timers'] >= 1 and result['visible_timers'] == 1, result
         if args.native:
-            assert len(result['native']) == 2, result
+            assert len(result['native']) == 2 and result['quit_guard'], result
+            assert all(not w['can_become_key'] for w in result['native']), result
             assert all(w['visible'] and w['active_space'] and w['behavior'] & 1 and w['behavior'] & (1<<8) and w['level'] >= 3 for w in result['native']), result
         assert (profile/'Library/Application Support/morningmeal_ComPet/skins/default/idle.png').exists()
         print('PASS: packaged '+('Cocoa' if args.native else 'offscreen')+' startup, resources and one-card display: '+json.dumps(result))

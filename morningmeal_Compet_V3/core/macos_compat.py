@@ -44,7 +44,10 @@ def _compet_apply_window(widget):
     except Exception as exc:
         _compet_window_status['error'] = repr(exc)
 def _compet_update_flags(self):
-    flags = _compet_Qt.WindowType.FramelessWindowHint | _compet_Qt.WindowType.WindowStaysOnTopHint | _compet_Qt.WindowType.Tool
+    flags = (_compet_Qt.WindowType.FramelessWindowHint | _compet_Qt.WindowType.WindowStaysOnTopHint
+             | _compet_Qt.WindowType.Tool | _compet_Qt.WindowType.WindowDoesNotAcceptFocus)
+    self.setAttribute(_compet_Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+    self.setFocusPolicy(_compet_Qt.FocusPolicy.NoFocus)
     if _compet_pet_module.config_mgr.config.get('settings', {}).get('click_through', False):
         flags |= _compet_Qt.WindowType.WindowTransparentForInput
     self.setWindowFlags(flags)
@@ -186,6 +189,8 @@ _compet_gui_init_original = _compet_GuiApplication.__init__
 def _compet_gui_init(self, *args, **kwargs):
     _compet_gui_init_original(self, *args, **kwargs)
     _compet_AppKit.NSApplication.sharedApplication().setActivationPolicy_(1)
+    from core.macos_focus import install as install_focus_guard
+    install_focus_guard(self)
 _compet_GuiApplication.__init__ = _compet_gui_init
 _compet_apply_window_original = _compet_apply_window
 def _compet_apply_window(widget):
@@ -231,7 +236,10 @@ _compet_engine.start_input_engine = _compet_start_input_with_space_watch
 # Apply the same nonactivating panel treatment to timer cards and newly shown timers.
 import ui.timer_widget as _compet_timer_module
 def _compet_timer_flags(self):
-    flags = _compet_Qt.WindowType.FramelessWindowHint | _compet_Qt.WindowType.WindowStaysOnTopHint | _compet_Qt.WindowType.Tool
+    flags = (_compet_Qt.WindowType.FramelessWindowHint | _compet_Qt.WindowType.WindowStaysOnTopHint
+             | _compet_Qt.WindowType.Tool | _compet_Qt.WindowType.WindowDoesNotAcceptFocus)
+    self.setAttribute(_compet_Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+    self.setFocusPolicy(_compet_Qt.FocusPolicy.NoFocus)
     self.setWindowFlags(flags)
     _compet_QTimer.singleShot(0, lambda: _compet_apply_window(self))
 _compet_timer_module.TimerWidget.update_window_flags = _compet_timer_flags
@@ -274,7 +282,7 @@ def _compet_apply_window(widget):
         try:
             window = _compet_objc.objc_object(c_void_p=int(widget.winId())).window()
             if window is not None:
-                window.setBecomesKeyOnlyIfNeeded_(False)
+                window.setBecomesKeyOnlyIfNeeded_(True)
                 window.setIgnoresMouseEvents_(False)
         except Exception as exc:
             _compet_window_status['timer_mouse_error'] = repr(exc)
