@@ -1,13 +1,14 @@
 """Live, read-only pie chart of every timer, without extra chart dependencies."""
 import math
 from datetime import date, timedelta
+from pathlib import Path
 from PyQt6.QtCore import Qt, QDate, QRectF, QTimer
-from PyQt6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPalette, QPen, QPixmap
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QComboBox, QDateEdit, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton,
+    QAbstractItemView, QComboBox, QDateEdit, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton, QStyleFactory,
     QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
-from core.config_manager import config_mgr
+from core.config_manager import config_mgr, BUNDLE_DIR
 from core.i18n import I18n
 from core.timer_statistics import timer_distribution
 from core.timer_history import get_history_store, statistics_day, period_bounds
@@ -127,7 +128,21 @@ class TimerStatisticsDialog(QDialog):
         self.next_button = QPushButton('›')
         self.today_button = QPushButton()
         self.date_edit = QDateEdit()
+        # Native Aqua controls can inherit the OS dark palette while this
+        # dialog uses a light stylesheet. Style these controls consistently.
+        self._control_style = QStyleFactory.create('Fusion')
+        self._control_style.setParent(self)
+        self.period_combo.setStyle(self._control_style)
+        self.date_edit.setStyle(self._control_style)
         self.date_edit.setCalendarPopup(True)
+        self.date_edit.calendarWidget().setStyle(self._control_style)
+        self.period_combo.setMinimumWidth(100)
+        self.date_edit.setMinimumWidth(140)
+        for button in (self.previous_button,self.next_button):
+            button.setFixedWidth(32)
+            button.setObjectName('statsPeriodNav')
+        for control in (self.period_combo,self.date_edit):
+            control.setMinimumHeight(30)
         self.date_edit.setDisplayFormat('yyyy-MM-dd')
         self.date_edit.setDate(QDate.fromString(statistics_day().isoformat(),'yyyy-MM-dd'))
         for widget in (self.period_combo,self.previous_button,self.date_edit,self.next_button,self.today_button):
@@ -194,6 +209,8 @@ class TimerStatisticsDialog(QDialog):
         self.today_button.setText(words[4])
         for widget in (self.previous_button,self.next_button,self.date_edit,self.today_button):
             widget.setEnabled(mode!='display')
+        if mode=='display':
+            self.date_edit.lineEdit().deselect()
         day = date.fromisoformat(self.date_edit.date().toString('yyyy-MM-dd'))
         if mode=='display':
             rows, total = timer_distribution(config_mgr.config.get('timers', []))
@@ -213,19 +230,49 @@ class TimerStatisticsDialog(QDialog):
         if self._dark != dark:
             self._dark = dark
             bg, fg, border = ('#18181B', '#FAFAFA', '#3F3F46') if dark else ('#FFFFFF', '#111827', '#D1D5DB')
+            disabled = '#A1A1AA' if dark else '#6B7280'
+            arrow = (Path(BUNDLE_DIR)/'assets/icons/chevron-down.svg').as_posix()
+            for control in (self.period_combo,self.date_edit,self.date_edit.calendarWidget()):
+                palette = QPalette(control.palette())
+                for group in (QPalette.ColorGroup.Active,QPalette.ColorGroup.Inactive,QPalette.ColorGroup.Disabled):
+                    color = disabled if group==QPalette.ColorGroup.Disabled else fg
+                    for role in (QPalette.ColorRole.Text,QPalette.ColorRole.WindowText,QPalette.ColorRole.ButtonText):
+                        palette.setColor(group,role,QColor(color))
+                    for role in (QPalette.ColorRole.Base,QPalette.ColorRole.Window,QPalette.ColorRole.Button):
+                        palette.setColor(group,role,QColor(bg))
+                    palette.setColor(group,QPalette.ColorRole.Highlight,QColor('#2563EB'))
+                    palette.setColor(group,QPalette.ColorRole.HighlightedText,QColor('#FFFFFF'))
+                control.setPalette(palette)
             self.setStyleSheet(f"""
                 QDialog#timerStatisticsDialog {{ background: {bg}; }}
                 QLabel {{ color: {fg}; }}
+                QComboBox, QDateEdit {{ background: {bg}; color: {fg}; border: 1px solid {border};
+                    border-radius: 5px; padding: 4px 6px; font-size: 13px; font-weight: normal; }}
+                QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 20px; }}
+                QComboBox::down-arrow, QDateEdit::down-arrow {{ image: url("{arrow}"); width: 12px; height: 12px; }}
+                QComboBox:disabled, QDateEdit:disabled {{ color: {disabled}; }}
+                QDateEdit QLineEdit {{ background: transparent; color: {fg}; border: none;
+                    padding: 0; font-size: 13px; font-weight: normal;
+                    selection-background-color: #2563EB; selection-color: #FFFFFF; }}
+                QDateEdit QLineEdit:disabled {{ color: {disabled}; }}
+                QComboBox QAbstractItemView {{ background: {bg}; color: {fg};
+                    selection-background-color: #2563EB; selection-color: #FFFFFF; }}
+                QCalendarWidget QWidget {{ background: {bg}; color: {fg}; }}
+                QCalendarWidget QAbstractItemView {{ background: {bg}; color: {fg};
+                    selection-background-color: #2563EB; selection-color: #FFFFFF; }}
                 QTableWidget {{ background: {bg}; color: {fg}; gridline-color: {border}; border: 1px solid {border}; }}
                 QHeaderView::section {{ background: {bg}; color: {fg}; padding: 5px; border: none; border-bottom: 1px solid {border}; }}
                 QPushButton {{ background: {bg}; color: {fg}; border: 1px solid {border}; border-radius: 5px; padding: 6px 16px; }}
+                QPushButton:disabled {{ color: {disabled}; }}
+                QPushButton#statsPeriodNav {{ padding: 0; font-size: 18px; font-weight: normal; }}
             """)
         title = I18n.tr('time_distribution')
         self.setWindowTitle(title)
         self.title_label.setText(title)
         self.total_label.setText(I18n.tr('stats_total').format(time=format_time(total)))
         warning = ('历史保存失败，正在重试；尚未保存的数据仍在内存。' if I18n.get_lang() in ('zh_CN','zh_TW') else 'History save failed; retrying. Unsaved data remains in memory.') if history_error else ''
-        self.note_label.setText(words[6] + ('\n'+words[7] if mode!='display' else '') + ('\n'+warning if warning else ''))
+        self.note_label.setText(warning)
+        self.note_label.setVisible(bool(warning))
         self.close_button.setText(I18n.tr('stats_close'))
         self.table.setHorizontalHeaderLabels([I18n.tr('stats_timer'), I18n.tr('stats_duration'), I18n.tr('stats_share')])
         scroll = self.table.verticalScrollBar().value()
