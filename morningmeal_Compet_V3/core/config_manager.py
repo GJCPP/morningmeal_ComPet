@@ -5,6 +5,7 @@ import json
 import uuid
 import shutil
 import hashlib
+import tempfile
 
 def get_bundle_dir():
     """PyInstaller 번들 내부 또는 소스 코드 루트 경로 반환"""
@@ -158,8 +159,23 @@ class ConfigManager:
 
     def save_config(self):
         try:
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=4, ensure_ascii=False)
+            history_module = sys.modules.get('core.timer_history')
+            history = getattr(history_module, '_store', None)
+            if history is not None:
+                history.sync_timers(self.config.get('timers',[]))
+                history.flush()
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=USER_DATA_DIR,
+                                                 prefix='.config-', delete=False) as f:
+                    temporary = f.name
+                    json.dump(self.config, f, indent=4, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(temporary, CONFIG_PATH)
+            finally:
+                if temporary and os.path.exists(temporary):
+                    os.unlink(temporary)
         except Exception as e:
             print(f"[ConfigManager] Save error: {e}")
 

@@ -26,6 +26,8 @@ class ActivityEngine(QObject):
         self.worker_thread = None
 
     def reset_timers(self, timer_ids=None):
+        if getattr(self, 'before_reset', None):
+            self.before_reset()
         targets = set(timer_ids) if timer_ids is not None else None
         updated = {}
         for timer in config_mgr.config.get('timers', []):

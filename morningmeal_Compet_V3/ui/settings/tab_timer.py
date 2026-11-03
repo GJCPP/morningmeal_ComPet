@@ -11,7 +11,7 @@ from core.config_manager import config_mgr
 from core.i18n import I18n
 from core.activity_engine import activity_engine
 from core.timer_policy import has_fallback_timer
-from ui.timer_statistics import show_timer_statistics
+from ui.timer_statistics import show_timer_statistics, display_reset_notice
 from ui.components import (
     ConfirmDialog, capture_bridge,
     start_window_click_capture, cancel_window_click_capture, format_time
@@ -226,7 +226,7 @@ class TimerCardWidget(QFrame):
         config_mgr.save_config()
 
     def reset_time(self):
-        dlg = ConfirmDialog(I18n.tr("reset_confirm_title"), I18n.tr("reset_confirm_msg"), is_danger=False, parent=self)
+        dlg = ConfirmDialog(I18n.tr("reset_confirm_title"), I18n.tr("reset_confirm_msg") + "\n" + display_reset_notice(), is_danger=False, parent=self)
         if dlg.exec() == ConfirmDialog.DialogCode.Accepted:
             t_id = self.timer_data.get("id")
             activity_engine.reset_timers([t_id])
@@ -530,7 +530,7 @@ class TabTimerSettings(QWidget):
         if not timers:
             return
         dialog = ConfirmDialog(I18n.tr("reset_all_title"),
-            I18n.tr("reset_all_message").format(count=len(timers)), is_danger=True, parent=self)
+            I18n.tr("reset_all_message").format(count=len(timers)) + "\n" + display_reset_notice(), is_danger=True, parent=self)
         if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
             activity_engine.reset_timers()
             self.settings_changed.emit()

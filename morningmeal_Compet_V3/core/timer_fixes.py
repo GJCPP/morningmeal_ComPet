@@ -43,6 +43,10 @@ class CurrentTimerController:
         self.dirty = False
         self.last_save = self.clock()
         self._refreshing = False
+        self.history = None
+        self.wall_clock = time.time
+        self.last_wall = None
+        self.last_history_day = None
 
     def display_id(self):
         ids = [timer['id'] for timer in config_mgr.config.get('timers', [])]
@@ -56,6 +60,9 @@ class CurrentTimerController:
 
     def step(self):
         now = self.clock()
+        before_display = {t['id']: t.get('elapsed_seconds',0) for t in config_mgr.config.get('timers',[])}
+        wall = self.wall_clock()
+        old_mono = self.session.last_step
         previous = (self.session.display_id, self.session.reason, self.session.matched_id)
         try:
             info = self.foreground()
@@ -71,17 +78,39 @@ class CurrentTimerController:
         self.engine.current_window_title = title
         self.engine.current_window_id = info.window_id if available else None
         updated = self.session.step(config_mgr.config, names, title, idle, now, allowed=allowed, available=available)
+        if self.history is not None:
+            from core.timer_history import statistics_day
+            self.history.sync_timers(config_mgr.config.get('timers',[]))
+            # Wall time only partitions valid monotonic durations. Do not bridge
+            # a system-clock jump; time-zone changes do not change epoch time.
+            valid_clock = (self.last_wall is not None and old_mono is not None
+                           and abs((wall-self.last_wall)-(now-old_mono)) <= 2)
+            if valid_clock:
+                self.history.record(self.session.credited_intervals,wall)
+            day = statistics_day(wall)
+            if self.last_history_day is not None and day != self.last_history_day:
+                self.history.try_flush()
+            self.last_history_day = day
+            self.last_wall = wall
+            updated = {}
+            for timer in config_mgr.config.get('timers',[]):
+                seconds = self.history.display_seconds(timer['id'])
+                if before_display.get(timer['id']) != seconds:
+                    timer['elapsed_seconds'] = seconds
+                    updated[timer['id']] = seconds
         self.engine.last_input_time = time.time() - max(0, idle)
         if self.session.matched_id:
             config_mgr.config.setdefault('settings', {})['recent_timer_id'] = self.session.matched_id
         changed = previous != (self.session.display_id, self.session.reason, self.session.matched_id)
-        self.dirty |= bool(updated) or changed
+        self.dirty |= bool(updated) or changed or bool(self.history and self.history.dirty)
         if updated:
             self.engine.tick.emit(updated)
         if changed:
             self.engine.active_window_changed.emit(self.engine.current_app_name)
         self.refresh_widgets()
         if self.dirty and (changed or now - self.last_save >= 5):
+            if self.history is not None:
+                self.history.try_flush()
             config_mgr.save_config()
             self.last_save, self.dirty = now, False
 
@@ -127,7 +156,18 @@ class CurrentTimerController:
         except Exception:
             return False
 
+    def prepare_reset(self):
+        if self.history is not None and self.engine.running:
+            self.step()
+
     def on_timers_reset(self, timer_ids):
+        if self.history is not None:
+            self.history.reset_display(timer_ids)
+            # Historical accrual and its fractional duration must not be reset.
+            for timer in config_mgr.config.get('timers',[]):
+                if timer['id'] in timer_ids:
+                    timer['elapsed_seconds'] = 0
+            return
         # Discard pre-reset fractional seconds and the interval crossing reset.
         for timer_id in timer_ids:
             self.session.fractions.pop(timer_id, None)
@@ -138,6 +178,9 @@ class CurrentTimerController:
         timer = getattr(self.engine,'_current_timer_poll',None)
         if timer:
             timer.stop()
+        if self.history is not None:
+            self.history.sync_timers(config_mgr.config.get('timers',[]))
+            self.history.try_flush()
         config_mgr.save_config()
 
 
@@ -196,8 +239,15 @@ def install(foreground=None, idle=None, allowed=None):
     def start(self):
         if self.running:
             return
+        from core.timer_history import get_history_store
+        controller.history = get_history_store()
+        controller.history.sync_timers(config_mgr.config.get('timers',[]))
+        for item in config_mgr.config.get('timers',[]):
+            item['elapsed_seconds'] = controller.history.display_seconds(item['id'])
         self.running = True
+        self.before_reset = controller.prepare_reset
         controller.engine = self
+        self.tick.emit({item['id']:item['elapsed_seconds'] for item in config_mgr.config.get('timers',[])})
         self.m_listener = self.k_listener = self.worker_thread = None
         self._current_timer_poll = QTimer(self)
         self._current_timer_poll.timeout.connect(lambda: controller.step() if self.running else None)

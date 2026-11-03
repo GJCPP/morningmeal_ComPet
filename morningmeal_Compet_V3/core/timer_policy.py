@@ -100,6 +100,7 @@ class TimerSession:
         self.reason = 'unmatched'
         self.last_step = None
         self.fractions = {}
+        self.credited_intervals = {}
 
     def step(self, config, app_names, title, idle_seconds, now, allowed=True, available=True):
         timers = config.get('timers', [])
@@ -124,12 +125,14 @@ class TimerSession:
         delta = 0 if self.last_step is None else max(0, now - self.last_step)
         self.last_step = now
         updated = {}
+        self.credited_intervals = {}
         # Each timer accrues only intervals active at both ends. Shared matches
         # count independently, without charging a newly selected task backwards.
         if delta <= 2:
             for timer_id in matches:
                 if timer_id not in previously_counting or timer_id not in self.counting_ids:
                     continue
+                self.credited_intervals[timer_id] = delta
                 total = self.fractions.get(timer_id, 0) + delta
                 seconds = int(total + 1e-9)
                 self.fractions[timer_id] = total - seconds

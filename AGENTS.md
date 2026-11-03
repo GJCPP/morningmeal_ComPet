@@ -45,3 +45,11 @@
 - Use `ui.numeric_editor.SettingsSpinBox` for settings integer fields. Preserve editor focus/card identity during value changes and external refreshes; do not reintroduce styled NoButtons/nested padding.
 - The user explicitly selected “羿” as the bundled default. Only those requested default assets are versioned; unrelated user skins remain private. Preserve customized skins and timer records during migration.
 - Run `tests/test_numeric_editors.py` for numeric changes, including `COMPET_QT_TEST_PLATFORM=cocoa` on macOS; use isolated profiles. Source-build asset manifests must match the packaged resources.
+
+## Historical timer accounting
+
+- Daily history is stored in user-data `timer-history.sqlite3`, independently from display reset baselines. Never delete/recalculate history when resetting a single/all display counters or deleting a timer.
+- Statistics days run from local 06:00 to next local 06:00, following the computer time zone. Existing day assignments stay unchanged after zone changes. Weeks start Monday at 06:00; months start on day 1 at 06:00.
+- Only credited monotonic intervals enter history. Split boundary intervals, exclude sleep/blocking/clock-jump gaps, and retain independent overlapping timer accrual. Never backfill undated legacy totals.
+- Keep history local and minimal: timer IDs/names, dates and aggregated durations; no keys, mouse trails, app/window titles or raw event logs. Do not commit databases/WAL/SHM files.
+- Test `tests/test_timer_history.py`, including `COMPET_QT_TEST_PLATFORM=cocoa` on macOS. Preserve the transaction boundary between lifetime counters, display baselines and daily totals.
