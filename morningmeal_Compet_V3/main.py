@@ -84,6 +84,8 @@ class MorningmealComPetApp:
 
         # 7. 위젯 인스턴스 스폰
         self.sync_widgets_from_config()
+        from core.windows_overlay import install as install_overlay_recovery
+        install_overlay_recovery(self.app)
 
         # 8. 백엔드 시그널 연결 & 엔진 시작
         self.connect_signals()
