@@ -44,6 +44,13 @@ class TrackingPolicyTests(unittest.TestCase):
         self.assertEqual(self.step('Editor', 1, idle=10), {'work': 11})
         self.assertEqual(self.session.counting_ids, {'work'})
 
+    def test_long_idle_threshold_is_respected(self):
+        self.data['timers'][0]['idle_timeout'] = 3600
+        self.step('Browser', 0, idle=1800)
+        self.assertEqual(self.step('Browser', 1, idle=1800), {'work': 11})
+        self.assertEqual(self.step('Browser', 2, idle=3601), {})
+        self.assertEqual(self.data['timers'][0]['elapsed_seconds'], 11)
+
     def test_paused_ordinary_match_is_not_redirected_to_other(self):
         self.data['timers'][0]['paused'] = True
         self.step('Browser', 0)

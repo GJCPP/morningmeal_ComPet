@@ -50,7 +50,7 @@ class NumericEditorTests(unittest.TestCase):
                         app.processEvents()
                         QTest.mouseClick(spin.lineEdit(),Qt.MouseButton.LeftButton)
                         spin.selectAll()
-                        QTest.keyClicks(spin.lineEdit(),'125' if kind=='scale' else '120')
+                        QTest.keyClicks(spin.lineEdit(),'125' if kind=='scale' else '86400')
                         app.processEvents()
                         assert spin.hasFocus() or spin.lineEdit().hasFocus()
                         # A live external refresh must preserve the active pet editor.
@@ -61,7 +61,7 @@ class NumericEditorTests(unittest.TestCase):
                         QTest.keyClick(spin.lineEdit(),Qt.Key.Key_Return)
                         app.processEvents()
                         saved=config_mgr.load_config()
-                        assert saved['pets'][0]['scale']==1.25 if kind=='scale' else saved['timers'][0]['idle_timeout']==120
+                        assert saved['pets'][0]['scale']==1.25 if kind=='scale' else saved['timers'][0]['idle_timeout']==86400
                         if kind=='scale': assert window.tab_pet.pet_grid.itemAt(0).widget() is card
                         editor=spin.lineEdit()
                         opt=QStyleOptionFrame(); opt.initFrom(editor); opt.rect=editor.rect()
@@ -73,6 +73,19 @@ class NumericEditorTests(unittest.TestCase):
                         blank=editor.grab().toImage()
                         assert sum(painted.pixel(x,y)!=blank.pixel(x,y) for y in range(painted.height()) for x in range(painted.width())) >= 12
                         editor.setText(text)
+            # Longer idle values survive editing, list refresh and reopening.
+            window.tabs.setCurrentWidget(window.tab_timer)
+            idle = idle_card.idle_spin
+            for seconds in (1800, 86400, 1000000, 2147483647):
+                idle.setFocus(); idle.selectAll()
+                QTest.keyClicks(idle.lineEdit(), str(seconds))
+                QTest.keyClick(idle.lineEdit(), Qt.Key.Key_Tab)
+                app.processEvents()
+                assert idle.value() == seconds
+                assert config_mgr.load_config()['timers'][0]['idle_timeout'] == seconds
+                window.tab_timer.refresh_timer_list()
+                assert window.tab_timer.card_map[timer['id']] is idle_card
+                assert idle.value() == seconds
             # Tab commits a range-valid replacement; steppers still work.
             window.tabs.setCurrentWidget(window.tab_pet)
             spin=card.scale_spin
@@ -83,7 +96,7 @@ class NumericEditorTests(unittest.TestCase):
             assert config_mgr.load_config()['pets'][0]['scale']==0.15
             reopened=MainSettingWindow()
             assert reopened.tab_pet.pet_grid.itemAt(0).widget().scale_spin.value()==15
-            assert next(iter(reopened.tab_timer.card_map.values())).idle_spin.value()==120
+            assert next(iter(reopened.tab_timer.card_map.values())).idle_spin.value()==2147483647
             window.close(); reopened.close()
         ''')
         for scale in ('1','1.5','2'):
