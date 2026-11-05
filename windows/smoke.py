@@ -10,7 +10,7 @@ def main():
     executable = Path(sys.argv[1]).resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix='compet-build-smoke-') as profile:
         env = os.environ.copy()
-        env.update(USERPROFILE=profile, QT_QPA_PLATFORM='offscreen', PYTHONUTF8='1')
+        env.update(USERPROFILE=profile, QT_QPA_PLATFORM='offscreen', PYTHONUTF8='1', COMPET_BUILD_SMOKE='1')
         startup = subprocess.STARTUPINFO()
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0
@@ -35,7 +35,9 @@ def main():
                     raise RuntimeError(f'App failed startup (exit={code}): {log}')
                 if not (data / 'skins/羿/idle.png').is_file():
                     raise RuntimeError(f'Default resources were not initialized: {log}')
-                print('Packaged startup and default resources: passed')
+                if not (Path(profile) / 'gamepad-runtime.json').is_file():
+                    raise RuntimeError(f'Bundled SDL runtime was not verified: {log}')
+                print('Packaged startup, default resources and virtual gamepad input: passed')
             finally:
                 if process.poll() is None:
                     process.terminate()

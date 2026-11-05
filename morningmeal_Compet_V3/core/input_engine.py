@@ -16,6 +16,7 @@ input_bridge = InputEngineBridge()
 
 active_modifiers = set()
 last_activity_time = time.time()
+_last_gamepad_activity = None
 _last_move_throttle_time = 0.0
 
 SHIFT_MAP = {
@@ -28,6 +29,23 @@ SHIFT_MAP = {
 def get_last_activity_time():
     global last_activity_time
     return last_activity_time
+
+def mark_gamepad_activity():
+    global _last_gamepad_activity
+    _last_gamepad_activity = time.monotonic()
+    _mark_activity()
+
+
+def clear_gamepad_activity():
+    global _last_gamepad_activity
+    _last_gamepad_activity = None
+
+
+def get_gamepad_idle_time():
+    if _last_gamepad_activity is None:
+        return float('inf')
+    return max(0.0, time.monotonic() - _last_gamepad_activity)
+
 
 def check_mac_accessibility():
     """

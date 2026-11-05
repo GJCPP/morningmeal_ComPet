@@ -4,12 +4,12 @@ import uuid
 import zipfile
 import shutil
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea,
+    QWidget, QApplication, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea,
     QPushButton, QLabel, QLineEdit, QComboBox, QFrame,
     QSlider, QGroupBox, QTableWidget, QHeaderView, QFileDialog,
     QMessageBox, QInputDialog, QCheckBox, QTabWidget
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QUrl
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices, QPixmap, QFontMetrics
 from core.config_manager import config_mgr, SKINS_DIR, DEFAULT_SKIN
 from ui.numeric_editor import SettingsSpinBox
@@ -200,6 +200,17 @@ class TabPetSettings(QWidget):
 
         layout_general.addWidget(self.clamp_cb)
         layout_general.addWidget(self.click_thru_cb)
+        self.gamepad_cb = QCheckBox(I18n.tr('gamepad_enabled'))
+        self.gamepad_cb.setChecked(config_mgr.config.get('settings', {}).get('gamepad_enabled', True))
+        self.gamepad_cb.toggled.connect(lambda checked: self.save_opt('gamepad_enabled', checked))
+        layout_general.addWidget(self.gamepad_cb)
+        self.gamepad_status = QLabel()
+        self.gamepad_status.setWordWrap(True)
+        layout_general.addWidget(self.gamepad_status)
+        self.gamepad_status_timer = QTimer(self)
+        self.gamepad_status_timer.timeout.connect(self.refresh_gamepad_status)
+        self.gamepad_status_timer.start(1000)
+        self.refresh_gamepad_status()
         layout_general.addStretch()
 
         # ==================== 2. 활성 펫 관리 서브 탭 ====================
@@ -775,6 +786,17 @@ class TabPetSettings(QWidget):
         except Exception as e:
             QMessageBox.critical(self, I18n.tr("error"), str(e))
 
+    def refresh_gamepad_status(self):
+        monitor = getattr(QApplication.instance(), '_compet_gamepad_monitor', None)
+        count = monitor.connected if monitor else 0
+        if not self.gamepad_cb.isChecked():
+            key = 'gamepad_disabled'
+        elif monitor and monitor.unavailable:
+            key = 'gamepad_unavailable'
+        else:
+            key = 'gamepad_connected' if count else 'gamepad_disconnected'
+        self.gamepad_status.setText(I18n.tr(key).format(count=count))
+
     def retranslate_ui(self):
         # 3개 서브 탭 번역
         self.sub_tabs.setTabText(0, I18n.tr("tab_general"))
@@ -784,6 +806,8 @@ class TabPetSettings(QWidget):
         # 일반 탭
         self.clamp_cb.setText(I18n.tr("clamp_to_screen"))
         self.click_thru_cb.setText(I18n.tr("click_through"))
+        self.gamepad_cb.setText(I18n.tr("gamepad_enabled"))
+        self.refresh_gamepad_status()
 
         # 펫 목록 탭
         self.btn_add_pet.setText(I18n.tr("add_pet"))

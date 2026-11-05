@@ -71,6 +71,7 @@ class CurrentTimerController:
             names = () if own_window else getattr(info, 'aliases', (info.app_name,))
             title = '' if own_window else info.title
             idle, allowed = self.idle(), bool(self.allowed())
+            idle = min(idle, input_engine.get_gamepad_idle_time())
         except Exception:
             info, names, title, idle, allowed, available = window_tracker.WindowInfo(), (), '', float('inf'), False, False
         # Always replace the foreground snapshot, including failures and our own settings.
@@ -152,7 +153,7 @@ class CurrentTimerController:
             return True
         try:
             return (timer_id in self.session.matched_ids and not timer.get('paused',False)
-                    and self.allowed() and self.idle() <= timer.get('idle_timeout',5))
+                    and self.allowed() and min(self.idle(), input_engine.get_gamepad_idle_time()) <= timer.get('idle_timeout',5))
         except Exception:
             return False
 

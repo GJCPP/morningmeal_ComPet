@@ -46,6 +46,7 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed --name "Compet-V3" `
             --add-data "assets;assets" `
             --add-data "skins;skins" `
+            --collect-all sdl2dll `
             @iconArg `
             main.py
           Compress-Archive -Path dist/Compet-V3 -DestinationPath "${{ github.workspace }}/Compet-V3-Windows.zip"
@@ -101,6 +102,7 @@ jobs:
           pyinstaller --noconfirm --windowed --name "Compet-V3" \
             --add-data "assets:assets" \
             --add-data "skins:skins" \
+            --collect-all sdl2dll \
             $ICON_ARG \
             main.py
           cd dist

@@ -16,3 +16,5 @@ pyqt6-qt6==6.12.0
 pyqt6-sip==13.13.0
 setuptools==84.2.1
 six==1.17.0
+pysdl2==0.9.17
+pysdl2-dll==2.32.10

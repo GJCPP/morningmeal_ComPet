@@ -4,6 +4,11 @@ from PyQt6.QtCore import QLocale, QObject, pyqtSignal
 TRANSLATIONS = {
     # ----------------------------- 1. 한국어 (ko) -----------------------------
     "ko": {
+        "gamepad_enabled": "게임패드 반응 및 활동 감지 사용",
+        "gamepad_disabled": "게임패드: 꺼짐",
+        "gamepad_unavailable": "게임패드를 읽을 수 없습니다. 다시 연결하세요",
+        "gamepad_connected": "게임패드: {count}개 연결됨",
+        "gamepad_disconnected": "게임패드: 연결된 장치 없음",
         "group_name": "그룹 이름",
         "rename_group_hint": "Enter를 누르거나 다른 곳을 클릭하면 이름을 저장합니다.",
         "group_name_empty": "그룹 이름을 입력하세요.",
@@ -134,6 +139,11 @@ TRANSLATIONS = {
 
     # ----------------------------- 2. 영어 (en) -----------------------------
     "en": {
+        "gamepad_enabled": "Enable gamepad interaction and activity detection",
+        "gamepad_disabled": "Gamepad: disabled",
+        "gamepad_unavailable": "Gamepad unavailable; reconnect your controller",
+        "gamepad_connected": "Gamepads connected: {count}",
+        "gamepad_disconnected": "Gamepad: no device detected",
         "group_name": "Group name",
         "rename_group_hint": "Press Enter or click elsewhere to save the name.",
         "group_name_empty": "Group name cannot be empty.",
@@ -260,6 +270,11 @@ TRANSLATIONS = {
 
     # ----------------------------- 3. 일본어 (ja) -----------------------------
     "ja": {
+        "gamepad_enabled": "ゲームパッドの反応と操作検出を有効化",
+        "gamepad_disabled": "ゲームパッド：無効",
+        "gamepad_unavailable": "ゲームパッドを読み取れません。接続し直してください",
+        "gamepad_connected": "ゲームパッド：{count}台接続",
+        "gamepad_disconnected": "ゲームパッド：未接続",
         "group_name": "グループ名",
         "rename_group_hint": "Enter または別の場所をクリックすると名前を保存します。",
         "group_name_empty": "グループ名を入力してください。",
@@ -386,6 +401,11 @@ TRANSLATIONS = {
 
     # ----------------------------- 4. 중국어 간체 (zh_CN) -----------------------------
     "zh_CN": {
+        "gamepad_enabled": "启用手柄互动及活跃检测",
+        "gamepad_disabled": "手柄：已关闭",
+        "gamepad_unavailable": "手柄：暂时无法读取，请重新连接设备",
+        "gamepad_connected": "手柄：已连接 {count} 个",
+        "gamepad_disconnected": "手柄：未检测到设备",
         "group_name": "分组名称",
         "rename_group_hint": "按 Enter 或点击其他位置保存名称。",
         "group_name_empty": "分组名称不能为空。",
@@ -512,6 +532,11 @@ TRANSLATIONS = {
 
     # ----------------------------- 5. 중국어 번체 (zh_TW) -----------------------------
     "zh_TW": {
+        "gamepad_enabled": "啟用手把互動及活動偵測",
+        "gamepad_disabled": "手把：已關閉",
+        "gamepad_unavailable": "手把：暫時無法讀取，請重新連接裝置",
+        "gamepad_connected": "手把：已連接 {count} 個",
+        "gamepad_disconnected": "手把：未偵測到裝置",
         "group_name": "群組名稱",
         "rename_group_hint": "按 Enter 或點擊其他位置儲存名稱。",
         "group_name_empty": "群組名稱不能為空。",

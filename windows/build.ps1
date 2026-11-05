@@ -61,6 +61,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed.' }
     & $python -m PyInstaller --noconfirm --onedir --windowed --name Compet-V3 `
         --distpath $stagingRoot --workpath $cacheRoot --specpath $cacheRoot `
+        --collect-all sdl2dll --runtime-hook (Join-Path $PSScriptRoot "gamepad_smoke_hook.py") `
         --add-data "$appRoot\assets;assets" --add-data "$appRoot\skins;skins" `
         --icon $iconPath (Join-Path $appRoot 'main.py')
     if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed; the current app has not been replaced.' }

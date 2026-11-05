@@ -28,7 +28,8 @@ def main():
             '--name', 'Compet-V3', '--osx-bundle-identifier', 'Compet-V3',
             '--distpath', OUT/'dist', '--workpath', OUT/'work', '--specpath', OUT,
             '--icon', icon, '--add-data', f'{source / "assets"}:assets',
-            '--runtime-hook', ROOT/'macos/smoke_hook.py', '--collect-submodules', 'pynput']
+            '--runtime-hook', ROOT/'macos/smoke_hook.py', '--collect-submodules', 'pynput',
+            '--collect-all', 'sdl2dll']
     for name in ['AppKit', 'Quartz', 'HIServices', 'core.docking', 'core.timer_policy',
                  'core.timer_fixes', 'core.macos_foreground', 'core.interaction_fixes',
                  'core.macos_compat']:

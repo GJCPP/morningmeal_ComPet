@@ -90,6 +90,8 @@ class MorningmealComPetApp:
         # 8. 백엔드 시그널 연결 & 엔진 시작
         self.connect_signals()
         start_input_engine()
+        from core.gamepad import start as start_gamepad_monitor
+        start_gamepad_monitor(self.app)
         activity_engine.start()
 
     def load_custom_icon(self):
@@ -151,10 +153,11 @@ class MorningmealComPetApp:
         activity_engine.tick.connect(self.on_timers_tick)
 
     def on_input_event(self, payload, is_mouse_click):
-        if is_mouse_click:
-            sound_mgr.play_click()
-        else:
-            sound_mgr.play_key()
+        if not payload.startswith('gamepad_'):
+            if is_mouse_click:
+                sound_mgr.play_click()
+            else:
+                sound_mgr.play_key()
 
         for pet in self.pet_widgets:
             pet.trigger_bounce(payload)
