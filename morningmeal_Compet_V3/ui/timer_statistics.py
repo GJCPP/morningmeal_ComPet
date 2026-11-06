@@ -5,7 +5,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QDate, QRectF, QTimer
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPalette, QPen, QPixmap
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QComboBox, QDateEdit, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton, QStyleFactory,
+    QAbstractItemView, QApplication, QComboBox, QDateEdit, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton, QStyleFactory,
     QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 from core.config_manager import config_mgr, BUNDLE_DIR
@@ -122,7 +122,7 @@ class TimerStatisticsDialog(QDialog):
         layout.addWidget(self.total_label)
         controls = QHBoxLayout()
         self.period_combo = QComboBox()
-        for key in ('display','day','week','month'):
+        for key in ('display','day','week','month','all'):
             self.period_combo.addItem(key,key)
         self.previous_button = QPushButton('‹')
         self.next_button = QPushButton('›')
@@ -130,8 +130,12 @@ class TimerStatisticsDialog(QDialog):
         self.date_edit = QDateEdit()
         # Native Aqua controls can inherit the OS dark palette while this
         # dialog uses a light stylesheet. Style these controls consistently.
-        self._control_style = QStyleFactory.create('Fusion')
-        self._control_style.setParent(self)
+        application = QApplication.instance()
+        if not hasattr(application, '_statistics_control_style'):
+            application._statistics_control_style = QStyleFactory.create('Fusion')
+            application._statistics_control_style.setParent(application)
+        # Popup containers can outlive their dialog during native teardown.
+        self._control_style = application._statistics_control_style
         self.period_combo.setStyle(self._control_style)
         self.date_edit.setStyle(self._control_style)
         self.date_edit.setCalendarPopup(True)
@@ -206,10 +210,12 @@ class TimerStatisticsDialog(QDialog):
         words = history_text()
         for index in range(4):
             self.period_combo.setItemText(index,words[index])
+        all_label = {'zh_CN':'全部历史','zh_TW':'全部歷史','en':'All history','ja':'すべての履歴','ko':'전체 기록'}.get(I18n.get_lang(),'All history')
+        self.period_combo.setItemText(4,all_label)
         self.today_button.setText(words[4])
         for widget in (self.previous_button,self.next_button,self.date_edit,self.today_button):
-            widget.setEnabled(mode!='display')
-        if mode=='display':
+            widget.setEnabled(mode not in ('display','all'))
+        if mode in ('display','all'):
             self.date_edit.lineEdit().deselect()
         day = date.fromisoformat(self.date_edit.date().toString('yyyy-MM-dd'))
         if mode=='display':
@@ -218,8 +224,11 @@ class TimerStatisticsDialog(QDialog):
         else:
             rows,total = get_history_store().distribution(day,mode)
             rows = [dict(row,name=row['name'] + (' ('+words[5]+')' if row['deleted'] else '')) for row in rows]
-            start,end = period_bounds(day,mode)
-            period_label = f'{start.isoformat()} 06:00 → {end.isoformat()} 06:00'
+            if mode=='all':
+                period_label = all_label
+            else:
+                start,end = period_bounds(day,mode)
+                period_label = f'{start.isoformat()} 06:00 → {end.isoformat()} 06:00'
         self.range_label.setText(period_label)
         dark = config_mgr.config.get('settings', {}).get('dark_mode', False)
         history_error = bool(get_history_store().last_error) if mode!='display' else False
