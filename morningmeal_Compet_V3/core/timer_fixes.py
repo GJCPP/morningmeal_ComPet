@@ -77,7 +77,8 @@ class CurrentTimerController:
         self.engine.current_app_name = names[0] if names else ''
         self.engine.current_window_title = title
         self.engine.current_window_id = info.window_id if available else None
-        updated = self.session.step(config_mgr.config, names, title, idle, now, allowed=allowed, available=available)
+        updated = self.session.step(config_mgr.config, names, title, idle, now, allowed=allowed, available=available,
+                                    update_display=self.history is None)
         if self.history is not None:
             from core.timer_history import statistics_day
             self.history.sync_timers(config_mgr.config.get('timers',[]))
@@ -95,8 +96,8 @@ class CurrentTimerController:
             updated = {}
             for timer in config_mgr.config.get('timers',[]):
                 seconds = self.history.display_seconds(timer['id'])
+                timer['elapsed_seconds'] = seconds
                 if before_display.get(timer['id']) != seconds:
-                    timer['elapsed_seconds'] = seconds
                     updated[timer['id']] = seconds
         self.engine.last_input_time = time.time() - max(0, idle)
         if self.session.matched_id:
