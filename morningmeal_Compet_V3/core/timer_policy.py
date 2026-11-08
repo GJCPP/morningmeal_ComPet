@@ -102,11 +102,13 @@ class TimerSession:
         self.fractions = {}
         self.credited_intervals = {}
 
-    def step(self, config, app_names, title, idle_seconds, now, allowed=True, available=True, update_display=True):
+    def step(self, config, app_names, title, idle_seconds, now, allowed=True, available=True, update_display=True, override_timer_id=None):
         timers = config.get('timers', [])
         by_id = {timer['id']: timer for timer in timers}
         previously_counting = self.counting_ids
         matches = matching_timer_ids(timers, config.get('groups', {}), app_names, title) if available else []
+        if available and override_timer_id in by_id and (any(app_names) or title):
+            matches = [override_timer_id]
         self.matched_ids = matches
         self.matched_id = matches[0] if matches else None
         self.counting_ids = {timer_id for timer_id in matches

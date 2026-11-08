@@ -2,9 +2,10 @@
 import os
 import time
 from PyQt6.QtCore import QTimer, Qt
-from PyQt6.QtWidgets import QApplication, QLabel, QMenu
+from PyQt6.QtWidgets import QApplication, QLabel, QMenu, QPushButton, QHBoxLayout
 from core.config_manager import config_mgr, SKINS_DIR
 from core.i18n import I18n
+from core.manual_override import ManualOverrides, app_identity
 from core.timer_policy import TimerSession, associated_ids, migrate_preferences
 from core.docking import docking_score, timer_position_below_pet
 from core import activity_engine as activity_module, input_engine, window_tracker
@@ -47,6 +48,37 @@ class CurrentTimerController:
         self.wall_clock = time.time
         self.last_wall = None
         self.last_history_day = None
+        self.overrides = ManualOverrides()
+        self.last_external_app = None
+        self.presented_override_key = None
+
+    def override_target(self):
+        try:
+            info = self.foreground()
+            if not info:
+                return None
+            if info.pid != os.getpid():
+                self.last_external_app = app_identity(info)
+        except Exception:
+            return None
+        return self.last_external_app
+
+    def override_entry(self, key):
+        return self.overrides.get(key,{t['id'] for t in config_mgr.config.get('timers',[])},
+                                  self.wall_clock(),self.clock())
+
+    def assign_override(self, target, timer_id, minutes=30):
+        if target is None or timer_id not in {t['id'] for t in config_mgr.config.get('timers',[])}:
+            return
+        if minutes not in (15,30,60,None):
+            raise ValueError('Unsupported temporary override duration')
+        self.overrides.assign(target[0],timer_id,minutes,self.wall_clock(),self.clock())
+        self.presented_override_key = target[0]
+        self.refresh_widgets()
+
+    def cancel_override(self, key=None):
+        self.overrides.cancel(key if key is not None else self.presented_override_key)
+        self.refresh_widgets()
 
     def display_id(self):
         ids = [timer['id'] for timer in config_mgr.config.get('timers', [])]
@@ -77,8 +109,17 @@ class CurrentTimerController:
         self.engine.current_app_name = names[0] if names else ''
         self.engine.current_window_title = title
         self.engine.current_window_id = info.window_id if available else None
+        override_id = None
+        if available and info.pid != os.getpid():
+            target = app_identity(info)
+            self.last_external_app = target
+            self.presented_override_key = target[0] if target else None
+            entry = self.override_entry(self.presented_override_key)
+            override_id = entry.timer_id if entry else None
+        elif not available:
+            self.presented_override_key = None
         updated = self.session.step(config_mgr.config, names, title, idle, now, allowed=allowed, available=available,
-                                    update_display=self.history is None)
+                                    update_display=self.history is None, override_timer_id=override_id)
         if self.history is not None:
             from core.timer_history import statistics_day
             self.history.sync_timers(config_mgr.config.get('timers',[]))
@@ -127,7 +168,30 @@ class CurrentTimerController:
                     if not widget.isVisible():
                         _ORIGINAL_SHOW(widget)
                     if hasattr(widget, 'label_status'):
-                        widget.label_status.setText(text(_REASONS.index(self.session.reason)))
+                        status = text(_REASONS.index(self.session.reason))
+                        entry = self.override_entry(self.presented_override_key)
+                        active = bool(entry and entry.timer_id==display)
+                        if active:
+                            from ui.override_menu import override_words
+                            words = override_words()
+                            remaining = entry.remaining(self.wall_clock(),self.clock())
+                            suffix = words['until'] if remaining is None else f'{remaining//60:02}:{remaining%60:02}'
+                            status += '\n'+words['temporary']+'\n'+suffix
+                        widget.label_status.setText(status)
+                        from ui.override_menu import override_words
+                        widget.override_cancel_button.setText(override_words()['cancel'])
+                        widget.override_cancel_button.setFixedWidth(max(32,
+                            widget.override_cancel_button.fontMetrics().horizontalAdvance(override_words()['cancel'])+4))
+                        widget.override_cancel_button.setVisible(active)
+                        margins = widget.layout().contentsMargins()
+                        available_width = widget.width()-margins.left()-margins.right()
+                        if active:
+                            available_width -= widget.override_cancel_button.width()+3
+                        height = widget.label_status.heightForWidth(max(1,available_width))
+                        widget.label_status.setMinimumHeight(max(widget.label_status.fontMetrics().height()+2,height))
+                        widget.layout().activate()
+                        if widget.height()!=widget.sizeHint().height():
+                            widget.resize(widget.width(),widget.sizeHint().height())
                 else:
                     widget.hide()
             for pet in widgets(PetWidget):
@@ -267,8 +331,20 @@ def install(foreground=None, idle=None, allowed=None):
         original_timer_init(self,*args,**kwargs)
         self.label_status = QLabel(text(2))
         self.label_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label_status.setWordWrap(True)
         self.label_status.setStyleSheet('background:transparent;color:#64748B;font-size:10px;')
-        self.layout().addWidget(self.label_status)
+        status_row = QHBoxLayout()
+        status_row.setContentsMargins(0,0,0,0)
+        status_row.setSpacing(3)
+        status_row.addWidget(self.label_status,1)
+        from ui.override_menu import override_words
+        self.override_cancel_button = QPushButton(override_words()['cancel'])
+        self.override_cancel_button.setFlat(True)
+        self.override_cancel_button.setStyleSheet('font-size:10px;color:#2563EB;background:transparent;border:none;padding:0;')
+        self.override_cancel_button.clicked.connect(lambda:controller.cancel_override())
+        self.override_cancel_button.hide()
+        status_row.addWidget(self.override_cancel_button)
+        self.layout().addLayout(status_row)
         self.label_status.installEventFilter(self._compet_drag_filter)
     TimerWidget.__init__ = timer_init
     def show(self):
@@ -356,6 +432,8 @@ def install(foreground=None, idle=None, allowed=None):
         settings=menu.addAction(I18n.tr('open_settings'))
         duplicate=menu.addAction(I18n.tr('duplicate_pet'))
         remove=menu.addAction(I18n.tr('remove_pet'))
+        from ui.override_menu import build_override_menu
+        menu.addMenu(build_override_menu(menu))
         submenu=menu.addMenu(text(8))
         follow=submenu.addAction(text(6));follow.setCheckable(True);follow.setChecked(self.pet_data.get('follow_current_timer',False))
         def all_changed(checked):
