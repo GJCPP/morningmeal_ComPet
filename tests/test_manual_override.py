@@ -29,6 +29,36 @@ class OverridePolicyTests(unittest.TestCase):
         self.assertIsNone(ManualOverrides().get('safari',{'work'},100,10))
         self.assertIsNone(registry.get('safari',set(),100,10))  # deleted target
 
+    def test_manual_idle_exemption_keeps_other_gates_and_sleep_accounting(self):
+        from core.timer_policy import TimerSession
+        for duration in (15,30,60,None):
+            with self.subTest(duration=duration):
+                registry=ManualOverrides()
+                registry.assign('app:video','video',duration,100,0)
+                data={'groups':{'video':['Video']},'timers':[
+                    dict(id='video',group='video',idle_timeout=5,elapsed_seconds=0)]}
+                session=TimerSession()
+                selected=registry.get('app:video',{'video'},100,0).timer_id
+                session.step(data,['Video'],'',float('inf'),0,override_timer_id=selected)
+                self.assertEqual(session.step(data,['Video'],'',float('inf'),1,override_timer_id=selected),{'video':1})
+                self.assertEqual(session.reason,'counting')
+                self.assertEqual(session.step(data,['Video'],'',1000,100,override_timer_id=selected),{})
+                self.assertEqual(session.step(data,['Video'],'',1000,101,override_timer_id=selected),{'video':2})
+                data['timers'][0]['paused']=True
+                session.step(data,['Video'],'',1000,102,override_timer_id=selected)
+                self.assertEqual(session.reason,'paused')
+                data['timers'][0]['paused']=False
+                session.step(data,['Video'],'',1000,103,allowed=False,override_timer_id=selected)
+                self.assertEqual(session.reason,'permission')
+                session.step(data,[],'',1000,104,override_timer_id=selected)
+                self.assertFalse(session.counting_ids)
+                session.step(data,['Video'],'',1000,105,available=False,override_timer_id=selected)
+                self.assertEqual(session.reason,'unavailable')
+                session.step(data,['Video'],'',1000,106,override_timer_id='deleted')
+                self.assertEqual(session.reason,'idle')
+                self.assertIsNone(session.override_timer_id)
+                self.assertEqual(data['timers'][0]['idle_timeout'],5)
+
     def test_actual_menu_engine_display_cancel_history_and_other_app(self):
         code=r'''
 import os,copy
@@ -36,6 +66,12 @@ from unittest.mock import patch
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtTest import QTest
 app=QApplication([])
+# The Windows offscreen plugin has no system font database by default.
+if os.name == 'nt':
+ from PyQt6.QtGui import QFontDatabase,QFont
+ for font in ('segoeui.ttf','msyh.ttc','malgun.ttf','consola.ttf'):
+  QFontDatabase.addApplicationFont(os.path.join(os.environ['SystemRoot'],'Fonts',font))
+ QFont.insertSubstitution('monospace','Consolas')
 with patch('os.path.expanduser',return_value=os.environ['COMPET_TEST_PROFILE']):
  from core.config_manager import config_mgr
 from core.interaction_fixes import install as interaction
@@ -78,28 +114,47 @@ assert widgets[0].override_cancel_button.isVisible() and '临时' in widgets[0].
 label=widgets[0].label_status
 assert widgets[0].width()==140 and widgets[0].height()==72
 assert '\n' not in label.text()
-# Pausing/idle/permission still gate accounting; overriding never bypasses them.
-for kind in ('paused','idle','permission'):
+# Watching without input must keep the explicitly selected timer counting.
+idle[0]=10000
+before=config_mgr.config['timers'][0]['elapsed_seconds']
+step();step()
+assert config_mgr.config['timers'][0]['elapsed_seconds']==before+2
+assert controller.session.reason=='counting' and controller.is_active('work')
+assert controller.session.counting_ids=={'work'}
+# Other applications retain their automatic idle gating.
+front[0]=WindowInfo(app_name='WeChat',pid=os.getpid()+20)
+before=config_mgr.config['timers'][2]['elapsed_seconds']
+step();step()
+assert controller.session.reason=='idle' and not controller.is_active('chat')
+assert config_mgr.config['timers'][2]['elapsed_seconds']==before
+front[0]=WindowInfo(app_name='Safari',pid=os.getpid()+10);step();step()
+assert controller.session.reason=='counting'
+# Pausing and permission still gate accounting during manual assignment.
+for kind in ('paused','permission'):
  before=[t['elapsed_seconds'] for t in config_mgr.config['timers']]
  if kind=='paused':config_mgr.config['timers'][0]['paused']=True
- if kind=='idle':idle[0]=100
  if kind=='permission':allowed[0]=False
  step();step();assert [t['elapsed_seconds'] for t in config_mgr.config['timers']]==before
- config_mgr.config['timers'][0]['paused']=False;idle[0]=0;allowed[0]=True
+ config_mgr.config['timers'][0]['paused']=False;allowed[0]=True
  step()
+idle[0]=0
 front[0]=WindowInfo(app_name='WeChat',pid=os.getpid()+20);step();step()
 assert controller.session.matched_ids==['chat']
 front[0]=WindowInfo(app_name='Safari',pid=os.getpid()+10);step();step()
 assert controller.session.matched_ids==['work']
+idle[0]=10000
 QTest.mouseClick(widgets[0].override_cancel_button,__import__('PyQt6.QtCore',fromlist=['Qt']).Qt.MouseButton.LeftButton)
-step();assert controller.session.matched_ids==['work','browse']
+before=[t['elapsed_seconds'] for t in config_mgr.config['timers']]
+step();step();assert controller.session.matched_ids==['work','browse']
+assert controller.session.reason=='idle' and not controller.is_active('work')
+assert [t['elapsed_seconds'] for t in config_mgr.config['timers']]==before
 # Until-cancel and custom duration menu actions are present and correctly wired.
 menu=build_override_menu()
 submenu=next(a.menu() for a in menu.actions() if a.menu() and any(x.data()==('browse',15) for x in a.menu().actions()))
 next(a for a in submenu.actions() if a.data()==('browse',15)).trigger();step()
-assert controller.session.matched_ids==['browse']
+assert controller.session.matched_ids==['browse'] and controller.session.reason=='counting'
 mono[0]+=901;wall[0]+=901;controller.step()
-assert controller.session.matched_ids==['work','browse']
+assert controller.session.matched_ids==['work','browse'] and controller.session.reason=='idle'
 # Deleted timers invalidate the override; failed foreground never accrues.
 controller.assign_override(target,'work',None)
 config_mgr.config['timers']=config_mgr.config['timers'][1:];step()
@@ -111,11 +166,11 @@ assert 'bundle:' not in __import__('pathlib').Path(CONFIG_PATH).read_text()
 controller.stop()
 assert controller.history.distribution(None,'all')[1]>0
 for widget in widgets:widget.close()
-print('PASS: scoped override, real menus, popup focus, exclusive counting, pause/idle/permission, cancellation and history')
+print('PASS: scoped override, real menus, popup focus, exclusive counting, manual idle exemption, pause/permission, automatic idle restoration, cancellation and history')
 '''
         with tempfile.TemporaryDirectory(prefix='compet-override-test-') as profile:
-            env=os.environ.copy();env.update(COMPET_TEST_PROFILE=profile,PYTHONPATH=str(ROOT/'morningmeal_Compet_V3'),QT_QPA_PLATFORM=os.environ.get('COMPET_QT_TEST_PLATFORM','offscreen'))
-            result=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,timeout=30)
+            env=os.environ.copy();env.update(PYTHONUTF8='1',COMPET_TEST_PROFILE=profile,PYTHONPATH=str(ROOT/'morningmeal_Compet_V3'),QT_QPA_PLATFORM=os.environ.get('COMPET_QT_TEST_PLATFORM','offscreen'))
+            result=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,encoding='utf-8',timeout=30)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
 
     def test_card_footprint_stays_fixed_across_override_states_and_languages(self):
@@ -126,6 +181,12 @@ from PyQt6.QtCore import Qt,QSize,QPoint
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtTest import QTest
 app=QApplication([])
+# The Windows offscreen plugin has no system font database by default.
+if os.name == 'nt':
+ from PyQt6.QtGui import QFontDatabase,QFont
+ for font in ('segoeui.ttf','msyh.ttc','malgun.ttf','consola.ttf'):
+  QFontDatabase.addApplicationFont(os.path.join(os.environ['SystemRoot'],'Fonts',font))
+ QFont.insertSubstitution('monospace','Consolas')
 with patch('os.path.expanduser',return_value=os.environ['COMPET_TEST_PROFILE']):
  from core.config_manager import config_mgr
 from core.interaction_fixes import install as interaction
@@ -194,8 +255,8 @@ print('PASS: fixed footprint, real cancellation, expiry, all states, five langua
 '''
         for scale in ('1','1.5','2'):
             with self.subTest(scale=scale), tempfile.TemporaryDirectory(prefix='compet-fixed-card-') as profile:
-                env=os.environ.copy();env.update(COMPET_TEST_PROFILE=profile,
+                env=os.environ.copy();env.update(PYTHONUTF8='1',COMPET_TEST_PROFILE=profile,
                     PYTHONPATH=str(ROOT/'morningmeal_Compet_V3'),QT_SCALE_FACTOR=scale,
                     QT_QPA_PLATFORM=os.environ.get('COMPET_QT_TEST_PLATFORM','offscreen'))
-                result=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,timeout=30)
+                result=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,encoding='utf-8',timeout=30)
                 self.assertEqual(result.returncode,0,result.stdout+result.stderr)

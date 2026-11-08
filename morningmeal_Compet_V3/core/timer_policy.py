@@ -81,12 +81,12 @@ def select_timer(timers, groups, app_names, title='', recent_id=None):
     return matches[0] if matches else None
 
 
-def timer_reason(timer, idle_seconds, allowed):
+def timer_reason(timer, idle_seconds, allowed, *, ignore_idle=False):
     if not allowed:
         return 'permission'
     if timer.get('paused', False):
         return 'paused'
-    if not math.isfinite(idle_seconds) or idle_seconds > timer.get('idle_timeout', 5):
+    if not ignore_idle and (not math.isfinite(idle_seconds) or idle_seconds > timer.get('idle_timeout', 5)):
         return 'idle'
     return 'counting'
 
@@ -101,18 +101,22 @@ class TimerSession:
         self.last_step = None
         self.fractions = {}
         self.credited_intervals = {}
+        self.override_timer_id = None
 
     def step(self, config, app_names, title, idle_seconds, now, allowed=True, available=True, update_display=True, override_timer_id=None):
         timers = config.get('timers', [])
         by_id = {timer['id']: timer for timer in timers}
         previously_counting = self.counting_ids
         matches = matching_timer_ids(timers, config.get('groups', {}), app_names, title) if available else []
+        self.override_timer_id = None
         if available and override_timer_id in by_id and (any(app_names) or title):
+            self.override_timer_id = override_timer_id
             matches = [override_timer_id]
         self.matched_ids = matches
         self.matched_id = matches[0] if matches else None
         self.counting_ids = {timer_id for timer_id in matches
-                             if timer_reason(by_id[timer_id], idle_seconds, allowed) == 'counting'}
+                             if timer_reason(by_id[timer_id], idle_seconds, allowed,
+                                 ignore_idle=timer_id == self.override_timer_id) == 'counting'}
         if matches:
             self.display_id = matches[0]
         elif self.display_id not in by_id:
@@ -123,7 +127,8 @@ class TimerSession:
         elif not matches:
             self.reason = 'unmatched'
         else:
-            self.reason = timer_reason(by_id[matches[0]], idle_seconds, allowed)
+            self.reason = timer_reason(by_id[matches[0]], idle_seconds, allowed,
+                                       ignore_idle=matches[0] == self.override_timer_id)
         delta = 0 if self.last_step is None else max(0, now - self.last_step)
         self.last_step = now
         updated = {}

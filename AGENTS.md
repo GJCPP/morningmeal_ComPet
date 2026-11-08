@@ -58,6 +58,6 @@
 
 - Overrides are session-only and scoped by macOS bundle ID or normalized Windows executable/app name, never URL/title/PID. Capture the last valid external app before a popup takes focus; never infer a target after failed foreground reads.
 - Default duration is 30 minutes, with 15/60 minutes or until cancelled. Other apps retain automatic rules; return within validity resumes the assignment. Expiry includes sleep and cannot be extended by moving the wall clock backwards. Restart and deleted target timers clear the assignment.
-- A scoped assignment selects exactly one timer, preserving pause, idle, own-UI and input permission gates and normal historical accounting. Never persist override/app tracking in config or history. Run `tests/test_manual_override.py`, including Cocoa on macOS.
+- A scoped assignment selects exactly one timer, ignoring idle timeout while retaining manual pause, own-UI and input permission gates and normal historical accounting. Ordinary automatic matches still obey idle timeout. Never persist override/app tracking in config or history. Run `tests/test_manual_override.py`, including Cocoa on macOS.
 
 - Desktop timer cards keep the original fixed 140×72 logical-pixel footprint in every state. Keep status text on one compact line; elide long labels with complete tooltips. Temporary assignment, cancellation, expiry, language/theme changes and long names must never resize cards or move their docking anchor.

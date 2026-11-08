@@ -206,8 +206,12 @@ class CurrentTimerController:
         if timer is None:
             return True
         try:
+            entry = self.override_entry(self.presented_override_key)
+            manual = (self.session.override_timer_id == timer_id
+                      and entry is not None and entry.timer_id == timer_id)
             return (timer_id in self.session.matched_ids and not timer.get('paused',False)
-                    and self.allowed() and min(self.idle(), input_engine.get_gamepad_idle_time()) <= timer.get('idle_timeout',5))
+                    and self.allowed() and (manual or
+                        min(self.idle(), input_engine.get_gamepad_idle_time()) <= timer.get('idle_timeout',5)))
         except Exception:
             return False
 
