@@ -1,5 +1,5 @@
 # ui/timer_widget.py
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtGui import QMouseEvent, QPainter, QColor, QPen
 from core.config_manager import config_mgr
@@ -7,6 +7,37 @@ from core.snap_manager import SnapManager
 from core.i18n import I18n
 from ui.mini_dialogs import TimerMiniDialog
 from ui.components import format_time
+
+
+class CompactLabel(QLabel):
+    """One-line text fitted to the card; retain complete content in a tooltip."""
+    def __init__(self, text='', parent=None):
+        super().__init__(parent)
+        self._full_text = ''
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Fixed)
+        self.setMinimumWidth(0)
+        self.setText(text)
+
+    def setText(self, value):
+        self._full_text = str(value)
+        self.setToolTip(self._full_text)
+        self._fit_text()
+
+    def _fit_text(self):
+        if hasattr(self,'_full_text'):
+            self.setMinimumHeight(self.fontMetrics().height())
+            display_text = ' '.join(self._full_text.split())
+            QLabel.setText(self,self.fontMetrics().elidedText(display_text,
+                Qt.TextElideMode.ElideRight,max(0,self.contentsRect().width())))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit_text()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        self._fit_text()
 
 class TimerWidget(QWidget):
     moved = pyqtSignal(str, int, int)  # (timer_id, x, y)
@@ -20,8 +51,8 @@ class TimerWidget(QWidget):
         self.open_main_settings_callback = open_main_settings_callback
         self.drag_position = QPoint()
 
-        # 가로 폭 140px 고정
-        self.setFixedWidth(140)
+        # Keep the original card footprint across names, languages and override states.
+        self.setFixedSize(140,72)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.update_window_flags()
@@ -40,17 +71,17 @@ class TimerWidget(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(4)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(2)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # 1. 타이머 이름 라벨 (짙은 회색 고정)
-        self.label_name = QLabel(self.timer_data.get("name", I18n.tr("default_timer_name")))
+        self.label_name = CompactLabel(self.timer_data.get("name", I18n.tr("default_timer_name")))
         self.label_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label_name.setStyleSheet("background: transparent; font-size: 11px; font-weight: 600; color: #4B5563;")
 
         # 2. 시간 라벨
-        self.label_time = QLabel(format_time(self.timer_data.get("elapsed_seconds", 0)))
+        self.label_time = CompactLabel(format_time(self.timer_data.get("elapsed_seconds", 0)))
         self.label_time.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label_time.setStyleSheet("background: transparent; font-size: 16px; font-weight: bold; font-family: monospace;")
 

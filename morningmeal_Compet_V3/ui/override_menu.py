@@ -16,6 +16,23 @@ def override_words():
                     _TEXT.get(I18n.get_lang(),_TEXT['en'])))
 
 
+def compact_timer_status(reason, overridden=False, remaining=None):
+    values = {
+      'zh_CN': ('计时中','闲置','未匹配','暂停','识别失败','需权限','临时'),
+      'zh_TW': ('計時中','閒置','未匹配','暫停','辨識失敗','需權限','臨時'),
+      'en': ('Counting','Idle','No match','Paused','Unknown','Blocked','Temp'),
+      'ja': ('計測中','待機','未一致','一時停止','取得不可','権限なし','一時'),
+      'ko': ('측정 중','유휴','미일치','일시정지','감지 불가','권한 필요','임시'),
+    }.get(I18n.get_lang(),('Counting','Idle','No match','Paused','Unknown','Blocked','Temp'))
+    status = values[('counting','idle','unmatched','paused','unavailable','permission').index(reason)]
+    if overridden:
+        if remaining is None:
+            return values[6] if reason=='counting' else values[6]+' · '+status
+        suffix = f'{remaining//60:02}:{remaining%60:02}'
+        status = (values[6] if reason=='counting' else status)+' '+suffix
+    return status
+
+
 def build_override_menu(parent=None, on_applied=None):
     from core.timer_fixes import controller
     from core.config_manager import config_mgr

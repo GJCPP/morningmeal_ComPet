@@ -10,7 +10,7 @@ from core.timer_policy import TimerSession, associated_ids, migrate_preferences
 from core.docking import docking_score, timer_position_below_pet
 from core import activity_engine as activity_module, input_engine, window_tracker
 from ui.pet_widget import PetWidget
-from ui.timer_widget import TimerWidget
+from ui.timer_widget import TimerWidget, CompactLabel
 from ui.settings.tab_pet import PetCardWidget
 from ui import components
 
@@ -168,30 +168,19 @@ class CurrentTimerController:
                     if not widget.isVisible():
                         _ORIGINAL_SHOW(widget)
                     if hasattr(widget, 'label_status'):
-                        status = text(_REASONS.index(self.session.reason))
+                        from ui.override_menu import compact_timer_status, override_words
                         entry = self.override_entry(self.presented_override_key)
                         active = bool(entry and entry.timer_id==display)
+                        remaining = entry.remaining(self.wall_clock(),self.clock()) if active else None
+                        widget.label_status.setText(compact_timer_status(self.session.reason,active,remaining))
+                        detail = text(_REASONS.index(self.session.reason))
                         if active:
-                            from ui.override_menu import override_words
                             words = override_words()
-                            remaining = entry.remaining(self.wall_clock(),self.clock())
                             suffix = words['until'] if remaining is None else f'{remaining//60:02}:{remaining%60:02}'
-                            status += '\n'+words['temporary']+'\n'+suffix
-                        widget.label_status.setText(status)
-                        from ui.override_menu import override_words
-                        widget.override_cancel_button.setText(override_words()['cancel'])
-                        widget.override_cancel_button.setFixedWidth(max(32,
-                            widget.override_cancel_button.fontMetrics().horizontalAdvance(override_words()['cancel'])+4))
+                            detail += ' · '+words['temporary']+' '+suffix
+                        widget.label_status.setToolTip(detail)
+                        widget.override_cancel_button.setToolTip(override_words()['cancel'])
                         widget.override_cancel_button.setVisible(active)
-                        margins = widget.layout().contentsMargins()
-                        available_width = widget.width()-margins.left()-margins.right()
-                        if active:
-                            available_width -= widget.override_cancel_button.width()+3
-                        height = widget.label_status.heightForWidth(max(1,available_width))
-                        widget.label_status.setMinimumHeight(max(widget.label_status.fontMetrics().height()+2,height))
-                        widget.layout().activate()
-                        if widget.height()!=widget.sizeHint().height():
-                            widget.resize(widget.width(),widget.sizeHint().height())
                 else:
                     widget.hide()
             for pet in widgets(PetWidget):
@@ -329,18 +318,19 @@ def install(foreground=None, idle=None, allowed=None):
     original_timer_init = TimerWidget.__init__
     def timer_init(self,*args,**kwargs):
         original_timer_init(self,*args,**kwargs)
-        self.label_status = QLabel(text(2))
+        self.label_status = CompactLabel(text(2))
         self.label_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label_status.setWordWrap(True)
         self.label_status.setStyleSheet('background:transparent;color:#64748B;font-size:10px;')
         status_row = QHBoxLayout()
         status_row.setContentsMargins(0,0,0,0)
         status_row.setSpacing(3)
         status_row.addWidget(self.label_status,1)
         from ui.override_menu import override_words
-        self.override_cancel_button = QPushButton(override_words()['cancel'])
+        self.override_cancel_button = QPushButton('×')
+        self.override_cancel_button.setFixedSize(14,14)
+        self.override_cancel_button.setToolTip(override_words()['cancel'])
         self.override_cancel_button.setFlat(True)
-        self.override_cancel_button.setStyleSheet('font-size:10px;color:#2563EB;background:transparent;border:none;padding:0;')
+        self.override_cancel_button.setStyleSheet('font-size:14px;color:#2563EB;background:transparent;border:none;padding:0;')
         self.override_cancel_button.clicked.connect(lambda:controller.cancel_override())
         self.override_cancel_button.hide()
         status_row.addWidget(self.override_cancel_button)

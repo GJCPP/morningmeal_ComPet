@@ -74,9 +74,10 @@ assert controller.override_entry(target[0]).remaining(wall[0],mono[0])==1800
 front[0]=WindowInfo(app_name='Safari',pid=os.getpid()+10);step();step()
 assert controller.session.matched_ids==['work']
 assert config_mgr.config['timers'][1]['elapsed_seconds']==1
-assert widgets[0].override_cancel_button.isVisible() and '临时指定' in widgets[0].label_status.text()
+assert widgets[0].override_cancel_button.isVisible() and '临时' in widgets[0].label_status.text()
 label=widgets[0].label_status
-assert label.height()>=label.heightForWidth(label.width()),(label.height(),label.heightForWidth(label.width()))
+assert widgets[0].width()==140 and widgets[0].height()==72
+assert '\n' not in label.text()
 # Pausing/idle/permission still gate accounting; overriding never bypasses them.
 for kind in ('paused','idle','permission'):
  before=[t['elapsed_seconds'] for t in config_mgr.config['timers']]
@@ -116,3 +117,85 @@ print('PASS: scoped override, real menus, popup focus, exclusive counting, pause
             env=os.environ.copy();env.update(COMPET_TEST_PROFILE=profile,PYTHONPATH=str(ROOT/'morningmeal_Compet_V3'),QT_QPA_PLATFORM=os.environ.get('COMPET_QT_TEST_PLATFORM','offscreen'))
             result=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,timeout=30)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
+    def test_card_footprint_stays_fixed_across_override_states_and_languages(self):
+        code=r'''
+import os
+from unittest.mock import patch
+from PyQt6.QtCore import Qt,QSize,QPoint
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtTest import QTest
+app=QApplication([])
+with patch('os.path.expanduser',return_value=os.environ['COMPET_TEST_PROFILE']):
+ from core.config_manager import config_mgr
+from core.interaction_fixes import install as interaction
+interaction()
+from core.timer_fixes import install,controller,_REASONS
+install()
+from core.i18n import I18n
+from ui.timer_widget import TimerWidget
+from ui.override_menu import compact_timer_status
+long_name='LongTimer计时器\n' * 30
+config_mgr.config['timers']=[dict(id='work',name=long_name,elapsed_seconds=61)]
+config_mgr.config['pets']=[]
+controller.clock=lambda:100
+controller.wall_clock=lambda:1800000000
+controller.session.display_id='work'
+controller.session.reason='counting'
+controller.presented_override_key='app:test'
+card=TimerWidget(config_mgr.config['timers'][0],lambda:[],lambda _:None,lambda:None)
+card.move(200,300)
+controller.refresh_widgets()
+app.processEvents()
+position=QPoint(card.pos())
+
+def check_card():
+ for _ in range(2):app.processEvents()
+ assert card.size()==QSize(140,72),card.size()
+ assert card.pos()==position,(card.pos(),position)
+ assert card.label_name.toolTip()==long_name
+ assert card.label_name.text()!=long_name
+ for label in (card.label_name,card.label_time,card.label_status):
+  assert label.text() and '\n' not in label.text(),repr(label.text())
+  assert card.rect().contains(label.geometry()),label.geometry()
+  assert label.height()>=label.fontMetrics().height(),(lang,label.text(),label.height(),label.fontMetrics().height(),card.layout().minimumSize())
+  assert label.fontMetrics().horizontalAdvance(label.text())<=label.contentsRect().width()+1
+ if card.override_cancel_button.isVisible():
+  assert card.rect().contains(card.override_cancel_button.geometry())
+ assert card.label_time.text()=='10000:59:59',card.label_time.text()
+
+for lang in ('zh_CN','zh_TW','en','ja','ko'):
+ I18n.set_language(lang)
+ for dark in (False,True):
+  config_mgr.config['settings']['dark_mode']=dark
+  card.update_metadata()
+  card.update_time(10000*3600+59*60+59)
+  controller.refresh_widgets();check_card()
+  for minutes in (15,30,60,None):
+   controller.overrides.assign('app:test','work',minutes,1800000000,100)
+   for reason in _REASONS:
+    controller.session.reason=reason
+    controller.refresh_widgets();check_card()
+    assert card.override_cancel_button.isVisible()
+    assert card.label_status.text()==compact_timer_status(reason,True,None if minutes is None else minutes*60),card.label_status.text()
+   controller.session.reason='counting'
+   controller.refresh_widgets()
+   # The compact cancellation button remains wired to the displayed rule.
+   QTest.mouseClick(card.override_cancel_button,Qt.MouseButton.LeftButton)
+   controller.refresh_widgets();check_card()
+   assert not card.override_cancel_button.isVisible()
+   assert controller.override_entry('app:test') is None
+  # Expiry restores the normal row without changing size or position.
+  controller.overrides.assign('app:test','work',15,1799999000,-900)
+  controller.refresh_widgets();check_card()
+  assert not card.override_cancel_button.isVisible()
+card.close()
+print('PASS: fixed footprint, real cancellation, expiry, all states, five languages, themes and long labels')
+'''
+        for scale in ('1','1.5','2'):
+            with self.subTest(scale=scale), tempfile.TemporaryDirectory(prefix='compet-fixed-card-') as profile:
+                env=os.environ.copy();env.update(COMPET_TEST_PROFILE=profile,
+                    PYTHONPATH=str(ROOT/'morningmeal_Compet_V3'),QT_SCALE_FACTOR=scale,
+                    QT_QPA_PLATFORM=os.environ.get('COMPET_QT_TEST_PLATFORM','offscreen'))
+                result=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
