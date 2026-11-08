@@ -41,9 +41,11 @@ guard.open('pet-menu');app.processEvents();assert window.isVisible()
 for i in range(105):guard.record('test')
 entries=json.loads(path.read_text());assert len(entries)==100
 assert all(set(e)<= {'time','event','source'} for e in entries)
-assert path.stat().st_mode & 0o777 == 0o600
+# Windows stat mode bits do not describe POSIX permissions or NTFS ACLs.
+if os.name != 'nt':
+ assert path.stat().st_mode & 0o777 == 0o600
 # Exercise the actual tray callback without launching input listeners.
-module=ast.parse((Path(os.environ['COMPET_SOURCE'])/'main.py').read_text())
+module=ast.parse((Path(os.environ['COMPET_SOURCE'])/'main.py').read_text(encoding='utf-8'))
 cls=next(n for n in module.body if isinstance(n,ast.ClassDef) and n.name=='MorningmealComPetApp')
 method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='on_tray_activated')
 ns={'sys':sys,'QSystemTrayIcon':QSystemTrayIcon};exec(compile(ast.Module(body=[method],type_ignores=[]),'<tray>','exec'),ns)

@@ -49,6 +49,7 @@ DEFAULT_CONFIG = {
         "dark_mode": False,
         "tray_mode": False,
         "click_through": False,
+        "gamepad_enabled": True,
         "clamp_to_screen": True,
         "magnetic_snap": True,
         "snap_distance": 15

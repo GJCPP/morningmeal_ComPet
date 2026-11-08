@@ -103,7 +103,7 @@ class TimerCardWidget(QFrame):
         idle_layout = QHBoxLayout()
         self.lbl_i = QLabel()
         self.idle_spin = SettingsSpinBox()
-        self.idle_spin.setRange(1, 999)
+        self.idle_spin.setRange(1, 2_147_483_647)  # Full positive QSpinBox integer range.
         self.idle_spin.setValue(self.timer_data.get('idle_timeout', 5))
         self.idle_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.idle_spin.valueChanged.connect(self.on_idle_changed)
