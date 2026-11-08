@@ -327,12 +327,18 @@ def install(foreground=None, idle=None, allowed=None):
         self.label_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label_status.setStyleSheet('background:transparent;color:#64748B;font-size:10px;')
         status_row = QHBoxLayout()
-        status_row.setContentsMargins(0,0,0,0)
+        # Balance the 14px cancel button and 3px gap on the left, too.
+        # Reserve both sides in every state so all status text stays on the
+        # same centerline as the name/time when the button appears or hides.
+        status_row.setContentsMargins(17,0,0,0)
         status_row.setSpacing(3)
         status_row.addWidget(self.label_status,1)
         from ui.override_menu import override_words
         self.override_cancel_button = QPushButton('×')
         self.override_cancel_button.setFixedSize(14,14)
+        cancel_policy = self.override_cancel_button.sizePolicy()
+        cancel_policy.setRetainSizeWhenHidden(True)
+        self.override_cancel_button.setSizePolicy(cancel_policy)
         self.override_cancel_button.setToolTip(override_words()['cancel'])
         self.override_cancel_button.setFlat(True)
         self.override_cancel_button.setStyleSheet('font-size:14px;color:#2563EB;background:transparent;border:none;padding:0;')

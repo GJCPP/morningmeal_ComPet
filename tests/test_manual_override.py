@@ -209,6 +209,7 @@ card.move(200,300)
 controller.refresh_widgets()
 app.processEvents()
 position=QPoint(card.pos())
+status_geometry=card.label_status.geometry()
 
 def check_card():
  for _ in range(2):app.processEvents()
@@ -219,10 +220,19 @@ def check_card():
  for label in (card.label_name,card.label_time,card.label_status):
   assert label.text() and '\n' not in label.text(),repr(label.text())
   assert card.rect().contains(label.geometry()),label.geometry()
+  # Text is centered on the whole card, including when the cancel button
+  # consumes space. A centered QLabel inside an asymmetric row is not enough.
+  bounds=label.geometry()
+  assert abs(bounds.x()+bounds.width()/2-card.width()/2)<=0.5,(lang,label.text(),bounds)
+  assert label.alignment()==Qt.AlignmentFlag.AlignCenter
   assert label.height()>=label.fontMetrics().height(),(lang,label.text(),label.height(),label.fontMetrics().height(),card.layout().minimumSize())
   assert label.fontMetrics().horizontalAdvance(label.text())<=label.contentsRect().width()+1
+ current=card.label_status.geometry()
+ assert (current.x(),current.width())==(status_geometry.x(),status_geometry.width())
+ assert abs(current.y()+current.height()/2-status_geometry.y()-status_geometry.height()/2)<=0.5
  if card.override_cancel_button.isVisible():
   assert card.rect().contains(card.override_cancel_button.geometry())
+  assert not card.label_status.geometry().intersects(card.override_cancel_button.geometry())
  assert card.label_time.text()=='10000:59:59',card.label_time.text()
 
 for lang in ('zh_CN','zh_TW','en','ja','ko'):
