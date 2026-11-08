@@ -36,7 +36,7 @@ for lang in ('zh_CN','en'):
     I18n.set_language(lang)
     for dark in (False,True):
         config_mgr.config['settings']['dark_mode']=dark
-        for mode in range(4):
+        for mode in range(5):
             window.period_combo.setCurrentIndex(mode);window.refresh();app.processEvents()
             assert window.period_combo.currentText()
             assert not window.note_label.isVisible()
@@ -55,7 +55,7 @@ for lang in ('zh_CN','en'):
             assert sum(before.pixel(x,y)!=blank.pixel(x,y) for y in range(before.height()) for x in range(before.width()))>=12,('invisible date text',lang,dark,mode)
             editor.setText(text)
             expected='#A1A1AA' if dark else '#6B7280'
-            if mode==0:
+            if mode in (0,4):
                 assert not window.date_edit.isEnabled()
                 assert window.date_edit.palette().color(QPalette.ColorGroup.Disabled,QPalette.ColorRole.Text).name().lower()==expected.lower()
             else:
@@ -66,12 +66,12 @@ assert window.date_edit.date()==QDate(2026,11,4)
 QTest.mouseClick(window.previous_button,Qt.MouseButton.LeftButton)
 assert window.date_edit.date()==QDate(2026,11,3)
 window.period_combo.showPopup();app.processEvents();assert window.period_combo.view().isVisible();window.period_combo.hidePopup()
-QTest.mouseClick(window.date_edit,Qt.MouseButton.LeftButton,pos=QPoint(window.date_edit.width()-8,window.date_edit.height()//2));app.processEvents();assert window.date_edit.calendarWidget().isVisible();window.date_edit.calendarWidget().window().hide()
+QTest.mouseClick(window.date_edit,Qt.MouseButton.LeftButton,pos=QPoint(window.date_edit.width()-8,window.date_edit.height()//2));app.processEvents();assert window.date_edit.calendarWidget().isVisible();QTest.keyClick(window.date_edit.calendarWidget(),Qt.Key.Key_Escape);app.processEvents();assert not window.date_edit.calendarWidget().isVisible()
 # Actual errors remain visible; routine instructions never take chart space.
 store=get_history_store();store.last_error='OperationalError';window.refresh()
 assert window.note_label.isVisible() and window.note_label.text()
 store.last_error=None;window.refresh();assert not window.note_label.isVisible()
-window.close()
+window.clearFocus();app.processEvents();window.close();app.processEvents()
 print('PASS: text painted in every mode/theme, disabled date contrast, popups, navigation and error-only footer')
 '''
         with tempfile.TemporaryDirectory(prefix='compet-stats-style-') as profile:

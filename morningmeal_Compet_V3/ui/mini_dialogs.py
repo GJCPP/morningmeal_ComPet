@@ -32,6 +32,12 @@ class TimerMiniDialog(QDialog):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
+        from ui.override_menu import build_override_menu
+        self.override_menu = build_override_menu(self,on_applied=self.close)
+        self.override_button = QPushButton(self.override_menu.title())
+        self.override_button.setMenu(self.override_menu)
+        layout.addWidget(self.override_button)
+
         is_paused = self.timer_data.get("paused", False)
         self.pause_btn = QPushButton(I18n.tr("resume") if is_paused else I18n.tr("pause"))
         self.pause_btn.clicked.connect(self.toggle_pause)

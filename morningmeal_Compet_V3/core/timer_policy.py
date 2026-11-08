@@ -102,11 +102,13 @@ class TimerSession:
         self.fractions = {}
         self.credited_intervals = {}
 
-    def step(self, config, app_names, title, idle_seconds, now, allowed=True, available=True):
+    def step(self, config, app_names, title, idle_seconds, now, allowed=True, available=True, update_display=True, override_timer_id=None):
         timers = config.get('timers', [])
         by_id = {timer['id']: timer for timer in timers}
         previously_counting = self.counting_ids
         matches = matching_timer_ids(timers, config.get('groups', {}), app_names, title) if available else []
+        if available and override_timer_id in by_id and (any(app_names) or title):
+            matches = [override_timer_id]
         self.matched_ids = matches
         self.matched_id = matches[0] if matches else None
         self.counting_ids = {timer_id for timer_id in matches
@@ -133,6 +135,10 @@ class TimerSession:
                 if timer_id not in previously_counting or timer_id not in self.counting_ids:
                     continue
                 self.credited_intervals[timer_id] = delta
+                if not update_display:
+                    # History owns display baselines and fractional time. Do not
+                    # speculatively change its shared configuration mirror.
+                    continue
                 total = self.fractions.get(timer_id, 0) + delta
                 seconds = int(total + 1e-9)
                 self.fractions[timer_id] = total - seconds

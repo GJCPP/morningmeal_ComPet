@@ -74,6 +74,12 @@ class MorningmealComPetApp:
 
         # 5. 메인 설정 창 생성
         self.settings_window = MainSettingWindow()
+        self._settings_guard = None
+        if sys.platform == 'darwin':
+            from core.settings_visibility import SettingsVisibilityGuard
+            from core.config_manager import USER_DATA_DIR
+            self._settings_guard = SettingsVisibilityGuard(self.settings_window,
+                os.path.join(USER_DATA_DIR, 'settings-window-events.json'))
         self.settings_window.setWindowIcon(self.app_icon)
         self.settings_window.settings_updated.connect(self.sync_widgets_from_config)
         self.settings_window.quit_requested.connect(self.quit_app)
@@ -130,7 +136,7 @@ class MorningmealComPetApp:
 
         tray_menu = QMenu()
         open_act = tray_menu.addAction(I18n.tr("open_settings"))
-        open_act.triggered.connect(self.show_settings)
+        open_act.triggered.connect(lambda checked=False:self.show_settings('tray-menu'))
         tray_menu.addSeparator()
         exit_act = tray_menu.addAction(I18n.tr("tray_exit"))
         exit_act.triggered.connect(self.quit_app)
@@ -140,10 +146,13 @@ class MorningmealComPetApp:
         self.tray_icon.show()
 
     def on_tray_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+        if sys.platform != 'darwin' and reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self.show_settings()
 
-    def show_settings(self):
+    def show_settings(self, source='other-explicit'):
+        if self._settings_guard is not None:
+            self._settings_guard.open(source)
+            return
         self.settings_window.show()
         self.settings_window.raise_()
         self.settings_window.activateWindow()
@@ -195,7 +204,7 @@ class MorningmealComPetApp:
                     timer_data=t_data,
                     get_all_timers_callback=self.get_all_timer_widgets,
                     get_bound_pet_callback=self.get_bound_pet_for_timer,
-                    open_main_settings_callback=self.show_settings
+                    open_main_settings_callback=lambda:self.show_settings('timer-menu')
                 )
                 tw.show()
                 self.timer_widgets.append(tw)
@@ -220,7 +229,7 @@ class MorningmealComPetApp:
                 pw = PetWidget(
                     pet_data=p_data,
                     get_all_timers_callback=self.get_all_timer_widgets,
-                    open_settings_callback=self.show_settings,
+                    open_settings_callback=lambda:self.show_settings('pet-menu'),
                     duplicate_callback=self.duplicate_pet,
                     remove_callback=self.remove_pet_by_id
                 )

@@ -53,3 +53,9 @@
 - Only credited monotonic intervals enter history. Split boundary intervals, exclude sleep/blocking/clock-jump gaps, and retain independent overlapping timer accrual. Never backfill undated legacy totals.
 - Keep history local and minimal: timer IDs/names, dates and aggregated durations; no keys, mouse trails, app/window titles or raw event logs. Do not commit databases/WAL/SHM files.
 - Test `tests/test_timer_history.py`, including `COMPET_QT_TEST_PLATFORM=cocoa` on macOS. Preserve the transaction boundary between lifetime counters, display baselines and daily totals.
+
+## Temporary app assignment
+
+- Overrides are session-only and scoped by macOS bundle ID or normalized Windows executable/app name, never URL/title/PID. Capture the last valid external app before a popup takes focus; never infer a target after failed foreground reads.
+- Default duration is 30 minutes, with 15/60 minutes or until cancelled. Other apps retain automatic rules; return within validity resumes the assignment. Expiry includes sleep and cannot be extended by moving the wall clock backwards. Restart and deleted target timers clear the assignment.
+- A scoped assignment selects exactly one timer, preserving pause, idle, own-UI and input permission gates and normal historical accounting. Never persist override/app tracking in config or history. Run `tests/test_manual_override.py`, including Cocoa on macOS.

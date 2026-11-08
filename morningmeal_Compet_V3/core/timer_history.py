@@ -126,11 +126,17 @@ class HistoryStore:
         self.dirty = False
 
     def distribution(self, day, period):
-        start,end = period_bounds(day,period)
-        totals = dict(self.db.execute('SELECT timer_id,SUM(duration_us) FROM daily '
-            'WHERE day>=? AND day<? GROUP BY timer_id',(start.isoformat(),end.isoformat())))
+        if period == 'all':
+            # Sum dated history, never the lifetime counter seeded from legacy
+            # undated display values. Include pending increments exactly once.
+            totals = dict(self.db.execute('SELECT timer_id,SUM(duration_us) FROM daily GROUP BY timer_id'))
+            start = end = None
+        else:
+            start,end = period_bounds(day,period)
+            totals = dict(self.db.execute('SELECT timer_id,SUM(duration_us) FROM daily '
+                'WHERE day>=? AND day<? GROUP BY timer_id',(start.isoformat(),end.isoformat())))
         for (stamp,ident),micros in self.pending.items():
-            if start.isoformat() <= stamp < end.isoformat():
+            if period == 'all' or start.isoformat() <= stamp < end.isoformat():
                 totals[ident] = totals.get(ident,0) + micros
         rows = [dict(id=ident,name=item['name'],deleted=item['deleted'],seconds=totals.get(ident,0)//1_000_000)
                 for ident,item in self.catalog.items() if not item['deleted'] or totals.get(ident,0)]
